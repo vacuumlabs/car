@@ -1,0 +1,17 @@
+[package]
+name = "addresses"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "0.1.59"
+sea-orm = { version = "0.10.4", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "postgres-array", "with-json"]}
+sea-query = {version = "0.27.2", features = [ "postgres-array", "with-json"]}
+tokio = { version = "1.16.1", features = ["full"] }
+rweb = { version = "0.6", features = ["openapi"] }
+serde = { version = "1.0.148", features = ["derive"]}
+
+# cardano
+pallas-addresses = "0.15.0"
