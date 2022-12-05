@@ -40,13 +40,19 @@ FROM
 GROUP BY T.id, T.hash
 
 -- inserts
-INSERT INTO address SELECT (id, 1, payload, NULL) FROM carp_address;
+INSERT INTO address SELECT (id, 1, payload, NULL, ARRAY[], ARRAY[]) FROM carp_address;
 INSERT INTO transaction SELECT
     id, 1, hash, NULL, "inputs", "outputs" FROM carp_export
 
 -- 
-create or replace function array_unique (a text[]) returns text[] as $$
+create or replace function array_unique (a integer[]) returns integer[] as $$
   select array (
     select distinct v from unnest(a) as b(v)
   )
 $$ language sql;
+
+CREATE AGGREGATE array_join (anycompatiblearray)
+(
+    sfunc = array_cat,
+    stype = anycompatiblearray
+);

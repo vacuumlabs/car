@@ -9,21 +9,23 @@ use serde::{Deserialize, Serialize};
 pub enum Tag {
     Unknown = 0,
 
-    Dex = 1,
-    Exchange = 2,
-    Atm = 3,
+    // finance
+    Finance = 1,
+    Dex = 301,
+    Exchange = 302,
+    Atm = 303,
 
+    // Activity
     Game = 100,
     Eshop = 101,
     Gamble = 102,
     Bet = 103,
-    #[sea_orm(num_value = 104)]
-    Travel,
-    #[sea_orm(num_value = 105)]
-    Sport,
-    #[sea_orm(num_value = 106)]
-    Entertainment,
+    Travel = 104,
+    Sport = 105,
+    Entertainment = 106,
+    Trade = 107,
 
+    // Subject
     #[sea_orm(num_value = 201)]
     Drogs,
     #[sea_orm(num_value = 202)]
@@ -40,6 +42,12 @@ pub enum Tag {
     Audio,
     #[sea_orm(num_value = 208)]
     Image,
+
+    // Tags for dex
+    Pool = 1001,
+    Address = 1002,
+    Worker = 1003,
+    Order = 1004,
 }
 
 impl NotU8 for Tag {}
