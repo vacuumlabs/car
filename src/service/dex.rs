@@ -1,4 +1,4 @@
-use crate::entity::{address, service};
+use crate::entity::service;
 use crate::service::common::Service;
 use crate::{common::Chain, tag::Tag};
 use async_trait::async_trait;

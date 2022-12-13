@@ -32,6 +32,7 @@ async fn main() -> Result<(), String> {
     let db: DatabaseConnection = Database::connect(opt).await.unwrap();
 
     // Some test queries
+    /*
     let address = entity::prelude::AddressEntity::find_by_id(36111266)
         .one(&db)
         .await
@@ -71,7 +72,6 @@ async fn main() -> Result<(), String> {
             None,
             common::DirectionOfInteraction::From,
         )),
-        /*
         tokio::spawn(common::address_interacting(
             db.clone(),
             vec![common::Chain::Cardano],
@@ -81,7 +81,6 @@ async fn main() -> Result<(), String> {
             None,
             common::DirectionOfInteraction::From,
         )),
-        */
     ];
 
     let mut sets = Vec::new();
@@ -99,7 +98,7 @@ async fn main() -> Result<(), String> {
     }
 
     tracing::info!("addresses: {:?}", intersection);
-
+    */
     let bind: SocketAddr = SocketAddr::from(([127, 0, 0, 1], 3030));
     server::run(&bind, &db).await;
     Ok(())

@@ -1,5 +1,5 @@
 [package]
-name = "addresses"
+name = "car"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,6 +14,7 @@ rweb = { version = "0.6", features = ["openapi"] }
 serde = { version = "1.0.148", features = ["derive"]}
 tracing-subscriber = "0.3.9"
 tracing = "0.1.31"
+hex = "0.4.3"
 
 # cardano
 pallas-addresses = "0.15.0"

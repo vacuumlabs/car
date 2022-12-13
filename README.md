@@ -1,4 +1,4 @@
-# Crypto address tracker
+# Crypto Addresses Relation
 
 Find information about addresses and sort them by service and tags.
 It starts with storing data in the PG and querying data using the GIN extension. But we do not know the direction of performance.

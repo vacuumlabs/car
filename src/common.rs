@@ -2,7 +2,7 @@ use sea_orm::{
     ActiveEnum, ConnectionTrait, DatabaseConnection, DbBackend, DeriveActiveEnum, EnumIter,
     Statement,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
