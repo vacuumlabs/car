@@ -14,7 +14,7 @@ async fn main() -> Result<(), String> {
     let fmt_layer = tracing_subscriber::fmt::layer();
     let filter = tracing_subscriber::filter::Targets::new()
         .with_target("sqlx", tracing::Level::DEBUG)
-        .with_target("addresses", tracing::Level::TRACE);
+        .with_target("car", tracing::Level::DEBUG);
 
     tracing_subscriber::registry()
         .with(fmt_layer)
@@ -32,7 +32,6 @@ async fn main() -> Result<(), String> {
     let db: DatabaseConnection = Database::connect(opt).await.unwrap();
 
     // Some test queries
-    /*
     let address = entity::prelude::AddressEntity::find_by_id(36111266)
         .one(&db)
         .await
@@ -49,57 +48,56 @@ async fn main() -> Result<(), String> {
         pallas
     );
 
+    /*
     for service in service::init_services(&db.clone()).await.iter() {
         service.clone().mark_addresses(db.clone()).await.unwrap();
     }
-
-    let tasks = vec![
-        tokio::spawn(common::address_interacting(
-            db.clone(),
-            vec![common::Chain::Cardano],
-            None,
-            None,
-            Some(vec![1]),
-            None,
-            common::DirectionOfInteraction::From,
-        )),
-        tokio::spawn(common::address_interacting(
-            db.clone(),
-            vec![common::Chain::Cardano],
-            None,
-            None,
-            Some(vec![2]),
-            None,
-            common::DirectionOfInteraction::From,
-        )),
-        tokio::spawn(common::address_interacting(
-            db.clone(),
-            vec![common::Chain::Cardano],
-            None,
-            None,
-            Some(vec![3]),
-            None,
-            common::DirectionOfInteraction::From,
-        )),
-    ];
-
-    let mut sets = Vec::new();
-    for task in tasks {
-        sets.push(task.await.unwrap().unwrap());
-    }
-
-    let mut intersection: Option<BTreeSet<i64>> = None;
-
-    for set in sets.iter() {
-        intersection = match &intersection {
-            Some(current) => Some(current & set),
-            _ => Some(set.clone()),
-        }
-    }
-
-    tracing::info!("addresses: {:?}", intersection);
     */
-    let bind: SocketAddr = SocketAddr::from(([127, 0, 0, 1], 3030));
+
+    /*
+    let set1 = common::address_interacting(
+        db.clone(),
+        vec![common::Chain::Cardano],
+        None,
+        None,
+        Some(vec![1]),
+        None,
+        common::DirectionOfInteraction::From,
+    )
+    .await
+    .unwrap();
+
+    let set2 = common::address_interacting(
+        db.clone(),
+        vec![common::Chain::Cardano],
+        None,
+        None,
+        Some(vec![2]),
+        None,
+        common::DirectionOfInteraction::From,
+    )
+    .await
+    .unwrap();
+
+    let set3 = common::address_interacting(
+        db.clone(),
+        vec![common::Chain::Cardano],
+        None,
+        None,
+        Some(vec![3]),
+        None,
+        common::DirectionOfInteraction::From,
+    )
+    .await
+    .unwrap();
+
+    //let mut intersection: Option<BTreeSet<i64>> = None;
+
+    let set4 = &set1 & &set2;
+    let intersection = &set4 & &set3;
+    tracing::debug!("addresses: {:?}", intersection);
+    */
+    let bind: SocketAddr = SocketAddr::from(([0, 0, 0, 0], 3030));
     server::run(&bind, &db).await;
     Ok(())
 }

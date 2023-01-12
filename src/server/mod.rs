@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::SocketAddr;
 
+mod transform;
+
 #[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
 pub struct AddressRef {
     hex: String,
@@ -15,7 +17,7 @@ pub struct AddressRef {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
-pub struct Address {
+pub struct AddressRelation {
     hex: String,
     human: String,
     inputs: Vec<AddressRef>,
@@ -26,12 +28,42 @@ pub struct Address {
     services: Vec<String>,
 }
 
-#[get("/")]
-#[openapi(description = "Test description?")]
-async fn index(#[data] db: DatabaseConnection) -> Result<String, Rejection> {
-    Ok(String::from(
-        "content type will be 'text/plain' as you return String",
-    ))
+#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
+pub struct Address {
+    id: Option<i64>,
+    chain: i32,
+    hash: Vec<u8>,
+    title: String,
+    services: Vec<i32>,
+    tags: Vec<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
+pub struct Chain {
+    id: Option<i32>,
+    title: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
+pub struct Service {
+    id: Option<i32>,
+    title: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
+pub struct Tag {
+    id: Option<i32>,
+    title: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
+pub struct Transaction {
+    id: Option<i32>,
+    chain: i32,
+    hash: Vec<u8>,
+    amount: i64,
+    from: Vec<i64>,
+    to: Vec<i64>,
 }
 
 /// Only for internal look up
@@ -43,143 +75,320 @@ pub struct PrivAddress {
     pub services: Vec<i32>,
 }
 
-/// Map adress ID to internal format
-async fn map_addresses(
-    db: &DatabaseConnection,
-    address_list: &mut BTreeSet<i64>,
-    address_map: &mut BTreeMap<i64, PrivAddress>,
-    tag_list: &mut BTreeSet<i32>,
-    service_list: &mut BTreeSet<i32>,
-) {
-    let statement = Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        r#"SELECT id, title, hash, tags, services FROM address WHERE id = ANY($1);"#,
-        vec![address_list
-            .iter()
-            .map(|a| a.clone())
-            .collect::<Vec<i64>>()
-            .into()],
-    );
-
-    if let Ok(query) = db.query_all(statement.clone()).await {
-        for row in query.iter() {
-            let id: i64 = row.try_get("", "id").unwrap();
-            let tags: Vec<i32> = row.try_get("", "tags").unwrap_or(Vec::new());
-            let services: Vec<i32> = row.try_get("", "services").unwrap_or(Vec::new());
-
-            for tag in tags.iter() {
-                tag_list.insert(*tag);
-            }
-
-            for service in services.iter() {
-                service_list.insert(*service);
-            }
-
-            let hash = row.try_get("", "hash").unwrap();
-            address_map.insert(
-                id,
-                PrivAddress {
-                    title: row.try_get("", "title").unwrap_or(hex::encode(&hash)),
-                    hash: hash,
-                    tags: tags,
-                    services: services,
-                },
-            );
-        }
-    } else {
-        tracing::error!("QUERY ERROR: {:?}", statement);
-    }
-}
-
-/// Colect information about tags
-pub async fn map_tags(
-    db: &DatabaseConnection,
-    tag_list: &BTreeSet<i32>,
-    tag_map: &mut BTreeMap<i32, String>,
-) {
-    let statement = Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        r#"SELECT id, title from tag WHERE id = ANY($1);"#,
-        vec![tag_list
-            .iter()
-            .map(|a| a.clone())
-            .collect::<Vec<i32>>()
-            .into()],
-    );
-    if let Ok(query) = db.query_all(statement).await {
-        for row in query.iter() {
-            tag_map.insert(
-                row.try_get::<i32>("", "id").unwrap(),
-                row.try_get::<String>("", "title").unwrap(),
-            );
-        }
-    }
-}
-
-// Colect information about services
-pub async fn map_services(
-    db: &DatabaseConnection,
-    service_list: &BTreeSet<i32>,
-    service_map: &mut BTreeMap<i32, String>,
-) {
-    let statement = Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        r#"SELECT id, title from service WHERE id = ANY($1);"#,
-        vec![service_list
-            .iter()
-            .map(|a| a.clone())
-            .collect::<Vec<i32>>()
-            .into()],
-    );
-    if let Ok(query) = db.query_all(statement).await {
-        for row in query.iter() {
-            service_map.insert(
-                row.try_get::<i32>("", "id").unwrap(),
-                row.try_get::<String>("", "title").unwrap(),
-            );
-        }
-    }
-}
-
-pub fn address_ref(
-    address_map: &BTreeMap<i64, PrivAddress>,
-    tag_map: &BTreeMap<i32, String>,
-    service_map: &BTreeMap<i32, String>,
-    addresses: BTreeMap<i64, i32>,
-) -> Vec<AddressRef> {
-    let mut result: Vec<AddressRef> = addresses
-        .iter()
-        .map(|(address_id, address_count)| {
-            if let Some(address) = address_map.get(address_id) {
-                return AddressRef {
-                    hex: hex::encode(&address.hash),
-                    human: address.title.clone(),
-                    quantity: address_count.clone(),
-                    tags: address
-                        .tags
-                        .iter()
-                        .map(|t| tag_map.get(t).unwrap_or(&t.to_string()).clone())
-                        .collect(),
-                    services: address
-                        .services
-                        .iter()
-                        .map(|s| service_map.get(s).unwrap_or(&s.to_string()).clone())
-                        .collect(),
-                };
-            }
-            AddressRef::default()
-        })
-        .collect();
-    result.sort_by(|a, b| b.quantity.cmp(&a.quantity));
-    result
-}
-
-#[get("/api/address/{address}/")] // TODO: Chain select?
+#[get("/")]
 #[openapi(description = "Test description?")]
-async fn address(
+async fn index(#[data] db: DatabaseConnection) -> Result<String, Rejection> {
+    Ok(String::from(
+        "content type will be 'text/plain' as you return String",
+    ))
+}
+
+/// Create address endpoint
+#[post("/api/address/")]
+#[openapi(description = "Create address record")]
+async fn address_create(
+    #[data] db: DatabaseConnection,
+    #[json] body: Address,
+) -> Result<Json<Address>, Rejection> {
+    Ok(body.into())
+}
+
+/// Create address endpoint
+#[get("/api/address/{address}")]
+#[openapi(description = "Read address record")]
+async fn address_detail(
     #[data] db: DatabaseConnection,
     address: String,
 ) -> Result<Json<Address>, Rejection> {
+    let address = Address {
+        chain: 1,
+        id: Some(1),
+        hash: vec![0, 0],
+        services: vec![1],
+        tags: vec![1],
+        title: String::from("test"),
+    };
+    Ok(address.into())
+}
+
+#[post("/api/address/{address}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn address_update(
+    #[data] db: DatabaseConnection,
+    address: String,
+) -> Result<Json<Address>, Rejection> {
+    let address = Address {
+        chain: 1,
+        id: Some(1),
+        hash: vec![0, 0],
+        services: vec![1],
+        tags: vec![1],
+        title: String::from("test"),
+    };
+    Ok(address.into())
+}
+
+#[delete("/api/address/{address}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn address_delete(
+    #[data] db: DatabaseConnection,
+    address: String,
+) -> Result<Json<Address>, Rejection> {
+    let address = Address {
+        chain: 1,
+        id: Some(1),
+        hash: vec![0, 0],
+        services: vec![1],
+        tags: vec![1],
+        title: String::from("test"),
+    };
+    Ok(address.into())
+}
+
+#[post("/api/tag/")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn tag_create(
+    #[data] db: DatabaseConnection,
+    #[json] body: Tag,
+) -> Result<Json<Tag>, Rejection> {
+    Ok(body.into())
+}
+
+#[get("/api/tag/{id}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn tag_detail(#[data] db: DatabaseConnection, id: String) -> Result<Json<Tag>, Rejection> {
+    Ok(Tag {
+        id: Some(1),
+        title: String::from("test"),
+    }
+    .into())
+}
+
+#[get("/api/tag/")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn tag_list(#[data] db: DatabaseConnection) -> Result<Json<Vec<Tag>>, Rejection> {
+    Ok(vec![Tag {
+        id: Some(1),
+        title: String::from("test"),
+    }]
+    .into())
+}
+
+#[post("/api/tag/{id}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn tag_update(
+    #[data] db: DatabaseConnection,
+    #[json] body: Tag,
+    id: String,
+) -> Result<Json<Tag>, Rejection> {
+    Ok(Tag {
+        id: Some(1),
+        title: String::from("test"),
+    }
+    .into())
+}
+
+#[delete("/api/tag/{id}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn tag_delete(#[data] db: DatabaseConnection, id: String) -> Result<Json<Tag>, Rejection> {
+    Ok(Tag {
+        id: Some(1),
+        title: String::from("test"),
+    }
+    .into())
+}
+
+/////
+
+#[post("/api/service/")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn service_create(
+    #[data] db: DatabaseConnection,
+    #[json] body: Service,
+) -> Result<Json<Service>, Rejection> {
+    Ok(body.into())
+}
+
+#[get("/api/service/{id}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn service_detail(
+    #[data] db: DatabaseConnection,
+    id: String,
+) -> Result<Json<Service>, Rejection> {
+    Ok(Service {
+        id: Some(1),
+        title: String::from("test"),
+    }
+    .into())
+}
+
+#[get("/api/service/")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn service_list(#[data] db: DatabaseConnection) -> Result<Json<Vec<Service>>, Rejection> {
+    Ok(vec![Service {
+        id: Some(1),
+        title: String::from("test"),
+    }]
+    .into())
+}
+
+#[post("/api/service/{id}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn service_update(
+    #[data] db: DatabaseConnection,
+    #[json] body: Tag,
+    id: String,
+) -> Result<Json<Tag>, Rejection> {
+    Ok(Tag {
+        id: Some(1),
+        title: String::from("test"),
+    }
+    .into())
+}
+
+#[delete("/api/service/{id}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn service_delete(
+    #[data] db: DatabaseConnection,
+    id: String,
+) -> Result<Json<Service>, Rejection> {
+    Ok(Service {
+        id: Some(1),
+        title: String::from("test"),
+    }
+    .into())
+}
+
+/////
+
+#[post("/api/chain/")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn chain_create(
+    #[data] db: DatabaseConnection,
+    #[json] body: Chain,
+) -> Result<Json<Chain>, Rejection> {
+    Ok(body.into())
+}
+
+#[get("/api/chain/{id}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn chain_detail(
+    #[data] db: DatabaseConnection,
+    id: String,
+) -> Result<Json<Chain>, Rejection> {
+    Ok(Chain {
+        id: Some(1),
+        title: String::from("test"),
+    }
+    .into())
+}
+
+#[get("/api/chain/")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn chain_list(#[data] db: DatabaseConnection) -> Result<Json<Vec<Chain>>, Rejection> {
+    Ok(vec![Chain {
+        id: Some(1),
+        title: String::from("test"),
+    }]
+    .into())
+}
+
+#[post("/api/chain/{id}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn chain_update(
+    #[data] db: DatabaseConnection,
+    #[json] body: Tag,
+    id: String,
+) -> Result<Json<Tag>, Rejection> {
+    Ok(Tag {
+        id: Some(1),
+        title: String::from("test"),
+    }
+    .into())
+}
+
+#[delete("/api/chain/{id}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn chain_delete(
+    #[data] db: DatabaseConnection,
+    id: String,
+) -> Result<Json<Chain>, Rejection> {
+    Ok(Chain {
+        id: Some(1),
+        title: String::from("test"),
+    }
+    .into())
+}
+
+#[post("/api/transaction/")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn transaction_create(
+    #[data] db: DatabaseConnection,
+    #[json] body: Transaction,
+) -> Result<Json<Transaction>, Rejection> {
+    Ok(body.into())
+}
+
+#[get("/api/transaction/{id}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn transaction_detail(
+    #[data] db: DatabaseConnection,
+    id: String,
+) -> Result<Json<Transaction>, Rejection> {
+    Ok(Transaction {
+        id: Some(1),
+        chain: 1,
+        amount: 0,
+        from: vec![1],
+        to: vec![1],
+        hash: vec![0],
+    }
+    .into())
+}
+
+#[post("/api/transaction/{id}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn transaction_update(
+    #[data] db: DatabaseConnection,
+    #[json] body: Tag,
+    id: String,
+) -> Result<Json<Transaction>, Rejection> {
+    Ok(Transaction {
+        id: Some(1),
+        chain: 1,
+        amount: 0,
+        from: vec![1],
+        to: vec![1],
+        hash: vec![0],
+    }
+    .into())
+}
+
+#[delete("/api/transaction/{id}")] // Create address endpoint
+#[openapi(description = "Read address record")]
+async fn transaction_delete(
+    #[data] db: DatabaseConnection,
+    id: String,
+) -> Result<Json<Transaction>, Rejection> {
+    Ok(Transaction {
+        id: Some(1),
+        chain: 1,
+        amount: 0,
+        from: vec![1],
+        to: vec![1],
+        hash: vec![0],
+    }
+    .into())
+}
+
+////
+
+#[get("/api/analysis/address/{address}")] // TODO: Chain select?
+#[openapi(description = "Test description?")]
+async fn address_relation(
+    #[data] db: DatabaseConnection,
+    address: String,
+) -> Result<Json<AddressRelation>, Rejection> {
     if let Ok(address_hex) = hex::decode(&address) {
         // Get address ID
         let statement = Statement::from_sql_and_values(
@@ -248,7 +457,7 @@ async fn address(
                 }
 
                 // Map DB resources
-                map_addresses(
+                transform::map_addresses(
                     &db,
                     &mut address_list,
                     &mut address_map,
@@ -256,18 +465,28 @@ async fn address(
                     &mut service_list,
                 )
                 .await;
-                map_tags(&db, &tag_list, &mut tag_map).await;
-                map_services(&db, &service_list, &mut service_map).await;
+                transform::map_tags(&db, &tag_list, &mut tag_map).await;
+                transform::map_services(&db, &service_list, &mut service_map).await;
 
                 // Transfer to json output
                 let address_detail = address_map.get(&address_id).unwrap();
-                Ok(Address {
+                Ok(AddressRelation {
                     hex: address.clone(),
                     human: address_detail.title.clone(),
-                    inputs: address_ref(&address_map, &tag_map, &service_map, inputs),
-                    outputs: address_ref(&address_map, &tag_map, &service_map, outputs),
-                    mixed_in: address_ref(&address_map, &tag_map, &service_map, mixed_in),
-                    mixed_out: address_ref(&address_map, &tag_map, &service_map, mixed_out),
+                    inputs: transform::address_ref(&address_map, &tag_map, &service_map, inputs),
+                    outputs: transform::address_ref(&address_map, &tag_map, &service_map, outputs),
+                    mixed_in: transform::address_ref(
+                        &address_map,
+                        &tag_map,
+                        &service_map,
+                        mixed_in,
+                    ),
+                    mixed_out: transform::address_ref(
+                        &address_map,
+                        &tag_map,
+                        &service_map,
+                        mixed_out,
+                    ),
                     tags: address_detail
                         .tags
                         .iter()
@@ -288,7 +507,39 @@ async fn address(
 }
 
 pub async fn run(bind: &SocketAddr, db: &DatabaseConnection) {
-    let (spec, filter) = openapi::spec().build(|| index(db.clone()).or(address(db.clone())));
+    let (spec, filter) = openapi::spec().build(|| {
+        index(db.clone())
+            // Tag
+            .or(tag_create(db.clone()))
+            .or(tag_detail(db.clone()))
+            .or(tag_list(db.clone()))
+            .or(tag_update(db.clone()))
+            .or(tag_delete(db.clone()))
+            // Service
+            .or(service_create(db.clone()))
+            .or(service_detail(db.clone()))
+            .or(service_list(db.clone()))
+            .or(service_update(db.clone()))
+            .or(service_delete(db.clone()))
+            // Chain
+            .or(chain_create(db.clone()))
+            .or(chain_detail(db.clone()))
+            .or(chain_list(db.clone()))
+            .or(chain_update(db.clone()))
+            .or(chain_delete(db.clone()))
+            // Address
+            .or(address_create(db.clone()))
+            .or(address_detail(db.clone()))
+            .or(address_update(db.clone()))
+            .or(address_delete(db.clone()))
+            // Transaction
+            .or(transaction_create(db.clone()))
+            .or(transaction_detail(db.clone()))
+            .or(transaction_update(db.clone()))
+            .or(transaction_delete(db.clone()))
+            // Analytics
+            .or(address_relation(db.clone()))
+    });
 
     serve(filter.or(openapi_docs(spec))).run(bind.clone()).await;
 }
