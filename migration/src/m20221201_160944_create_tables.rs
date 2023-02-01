@@ -21,8 +21,50 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Chain::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Chain::Id).integer().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(Chain::Id)
+                            .integer()
+                            .auto_increment()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Chain::Title).string().not_null())
+                    .to_owned(),
+            )
+            .await?;
+
+        // Service
+        manager
+            .create_table(
+                Table::create()
+                    .table(Service::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Service::Id)
+                            .integer()
+                            .auto_increment()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(Service::Title).string().not_null())
+                    .to_owned(),
+            )
+            .await?;
+
+        // Tag
+        manager
+            .create_table(
+                Table::create()
+                    .table(Tag::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Tag::Id)
+                            .integer()
+                            .auto_increment()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(Tag::Title).string().not_null())
                     .to_owned(),
             )
             .await?;
@@ -50,8 +92,18 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Address::Hash).binary().not_null())
                     .col(ColumnDef::new(Address::Title).string().null())
-                    .col(ColumnDef::new(Address::Services).array(ColumnType::Integer(None)))
-                    .col(ColumnDef::new(Address::Tags).array(ColumnType::Integer(None)))
+                    .col(
+                        ColumnDef::new(Address::Services)
+                            .array(ColumnType::Integer(None))
+                            .not_null()
+                            .default(SimpleExpr::Custom(String::from("Array[]::integer[]"))),
+                    )
+                    .col(
+                        ColumnDef::new(Address::Tags)
+                            .array(ColumnType::Integer(None))
+                            .not_null()
+                            .default(SimpleExpr::Custom(String::from("Array[]::integer[]"))),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -173,35 +225,6 @@ impl MigrationTrait for Migration {
                 )
                 .await?;
         }
-
-        // Service
-        manager
-            .create_table(
-                Table::create()
-                    .table(Service::Table)
-                    .if_not_exists()
-                    .col(
-                        ColumnDef::new(Service::Id)
-                            .integer()
-                            .not_null()
-                            .primary_key(),
-                    )
-                    .col(ColumnDef::new(Service::Title).string().not_null())
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .create_table(
-                Table::create()
-                    .table(Tag::Table)
-                    .if_not_exists()
-                    .col(ColumnDef::new(Tag::Id).integer().not_null().primary_key())
-                    .col(ColumnDef::new(Tag::Title).string().not_null())
-                    .to_owned(),
-            )
-            .await?;
-
         Ok(())
     }
 

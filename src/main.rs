@@ -14,6 +14,7 @@ async fn main() -> Result<(), String> {
     let fmt_layer = tracing_subscriber::fmt::layer();
     let filter = tracing_subscriber::filter::Targets::new()
         .with_target("sqlx", tracing::Level::DEBUG)
+        .with_target("rweb", tracing::Level::DEBUG)
         .with_target("car", tracing::Level::DEBUG);
 
     tracing_subscriber::registry()
@@ -31,6 +32,7 @@ async fn main() -> Result<(), String> {
         .set_schema_search_path("public".into());
     let db: DatabaseConnection = Database::connect(opt).await.unwrap();
 
+    /*
     // Some test queries
     let address = entity::prelude::AddressEntity::find_by_id(36111266)
         .one(&db)
@@ -47,6 +49,7 @@ async fn main() -> Result<(), String> {
         pallas.to_bech32().unwrap(),
         pallas
     );
+    */
 
     /*
     for service in service::init_services(&db.clone()).await.iter() {
