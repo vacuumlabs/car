@@ -22,3 +22,10 @@ cargo install sea-orm-cli
 sea-orm-cli migrate up
 cargo run
 ```
+
+== Frontend
+
+```bash
+cargo install trunk
+trunk serve --proxy-backend http://localhost:3030/api/
+```
