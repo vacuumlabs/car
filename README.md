@@ -27,5 +27,5 @@ cargo run
 
 ```bash
 cargo install trunk
-trunk serve --proxy-backend http://localhost:3030/api/
+trunk serve
 ```
