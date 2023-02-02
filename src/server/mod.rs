@@ -12,24 +12,26 @@ mod transform;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
 pub struct AddressRelationHuman {
+    id: i64,
     hex: String,
     human: String,
-    inputs: Vec<AddressRef>,
-    outputs: Vec<AddressRef>,
-    mixed_in: Vec<AddressRef>,
-    mixed_out: Vec<AddressRef>,
+    inputs: Vec<AddressRefHuman>,
+    outputs: Vec<AddressRefHuman>,
+    mixed_in: Vec<AddressRefHuman>,
+    mixed_out: Vec<AddressRefHuman>,
     tags: Vec<String>,
     services: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
 pub struct AddressRelation {
+    id: i64,
     hex: String,
     human: String,
-    inputs: Vec<Address>,
-    outputs: Vec<Address>,
-    mixed_in: Vec<Address>,
-    mixed_out: Vec<Address>,
+    inputs: Vec<AddressRef>,
+    outputs: Vec<AddressRef>,
+    mixed_in: Vec<AddressRef>,
+    mixed_out: Vec<AddressRef>,
     tags: Vec<i32>,
     services: Vec<i32>,
 }
@@ -84,6 +86,17 @@ pub struct PrivAddress {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
 pub struct AddressRef {
+    id: i64,
+    hex: String,
+    human: String,
+    quantity: i32,
+    tags: Vec<i32>,
+    services: Vec<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
+pub struct AddressRefHuman {
+    id: i64,
     hex: String,
     human: String,
     quantity: i32,

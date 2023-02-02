@@ -42,7 +42,7 @@ pub async fn list_by_service(service: i32) -> fetch::Result<Vec<model::Address>>
         .await
 }
 
-pub async fn detail(id: i32) -> fetch::Result<model::Address> {
+pub async fn detail(id: i64) -> fetch::Result<model::Address> {
     Request::new(format!("/api/address/{}", id))
         .method(Method::Get)
         .fetch()
@@ -63,7 +63,7 @@ pub async fn save(address: model::Address) -> fetch::Result<model::Address> {
         .await
 }
 
-pub async fn delete(id: i32) -> fetch::Result<i32> {
+pub async fn delete(id: i64) -> fetch::Result<i64> {
     Request::new(format!("/api/address/{}", id))
         .method(Method::Delete)
         .fetch()

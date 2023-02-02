@@ -26,6 +26,30 @@ pub fn get_address() -> String {
     }
 }
 
+pub fn tag_badge<Ms>(ctx: &crate::Context, tags: &Vec<i32>) -> Vec<Node<Ms>> {
+    tags.iter()
+        .filter(|t| ctx.tags.contains_key(t))
+        .map(|t| {
+            a![
+                C!["badge"],
+                ctx.tags.get(t).unwrap().title.clone(),
+                attrs! {At::Href => crate::Urls::new(ctx.base_url.clone()).tag().detail(t.clone())}
+            ]
+        })
+        .collect()
+}
+
+pub fn service_badge<Ms>(ctx: &crate::Context, tags: &Vec<i32>) -> Vec<Node<Ms>> {
+    tags.iter()
+        .filter(|s| ctx.services.contains_key(s))
+        .map(|s| a![
+            C!["badge"], 
+            ctx.services.get(s).unwrap().title.clone(),
+            attrs! {At::Href => crate::Urls::new(ctx.base_url.clone()).service().detail(s.clone())}
+        ])
+        .collect()
+}
+
 pub fn pagination<Ms: 'static + std::fmt::Debug>(
     pagination: &crate::Pagination,
     length: usize,

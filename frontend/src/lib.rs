@@ -263,6 +263,17 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 )
             }
         }
+
+        Msg::Analysis(sub_msg) => {
+            if let Page::Analysis(sub_page) = &mut model.page {
+                pages::analysis::update(
+                    sub_msg,
+                    sub_page,
+                    &mut model.ctx,
+                    &mut orders.proxy(Msg::Analysis),
+                )
+            }
+        }
         _ => {}
     }
 }
@@ -297,7 +308,6 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
         },
     ]
 }
-
 // ------ ------
 //     Start
 // ------ ------
