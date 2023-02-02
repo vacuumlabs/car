@@ -16,8 +16,19 @@ Tak the address with information like money, sports game, etc.
 
 Runninng
 
+If you want to set up the database using the provided docker compose file:
+```bash
+export DATABASE_URL="postgres://postgres:postgres@0.0.0.0:5432/addresses"
+docker-compose up -d
+```
+
+Or if running locally:
 ```bash
 export DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/addresses"
+```
+
+Then run:
+```bash
 cargo install sea-orm-cli
 sea-orm-cli migrate up
 cargo run
@@ -26,6 +37,8 @@ cargo run
 == Frontend
 
 ```bash
+cd frontend
+rustup target add wasm32-unknown-unknown
 cargo install trunk
-trunk serve --proxy-backend http://localhost:3030/api/
+trunk serve
 ```
