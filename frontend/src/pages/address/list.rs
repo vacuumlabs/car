@@ -22,14 +22,14 @@ pub enum Msg {
     LoadByAddress(String),
     LoadByTag(i32),
     LoadByService(i32),
-    LoadByIds(Vec<i32>),
+    LoadByIds(Vec<i64>),
     AddresssFetched(fetch::Result<Vec<crate::model::Address>>),
     AddressNew,
     AddressNewTitleChanged(String),
     AddressCreate,
     AddressCreated(fetch::Result<crate::model::Address>),
-    AddressDelete(i32),
-    AddressDeleted(fetch::Result<i32>),
+    AddressDelete(i64),
+    AddressDeleted(fetch::Result<i64>),
 }
 
 pub fn update(msg: Msg, model: &mut Model, ctx: &mut Context, orders: &mut impl Orders<Msg>) {
@@ -175,6 +175,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 thead![
                     tr![
                         th!["#"], 
+                        th!["Chain"],
                         th!["Title"],
                         th!["Hash"],
                         th!["Tags"],
@@ -193,12 +194,18 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                                     attrs!{At::Href => Urls::new(ctx.base_url.clone()).address().detail(id.clone())},
                                     id.to_string()
                                 ],
-                                ],
+                            ],
+                            td![ctx.chains.get(&a.chain).unwrap().title.clone()],
                             td![a.title.clone().unwrap_or(a.hash.clone())],
                             td![a.hash.clone()],
-                            td![a.tags.iter().filter(|t| ctx.tags.contains_key(t)).map(move |t| span![C!["badge"], ctx.tags[t].title.clone()])],
-                            td![a.services.iter().filter(|s| ctx.services.contains_key(s)).map(move |s| span![C!["badge"], ctx.services[s].title.clone()])],
-                            td![a![attrs!{At::Href => crate::Urls::new(ctx.base_url.clone()).analysis().relations(a.hash.clone())}, "Relation"]],
+                            td![crate::pages::tag_badge(ctx, &a.tags)],
+                            td![crate::pages::service_badge(ctx, &a.services)],
+                            td![
+                                ul![
+                                    li![a![attrs!{At::Href => crate::Urls::new(ctx.base_url.clone()).analysis().relations(a.hash.clone())}, "Relation"]],
+                                    li![a![attrs!{At::Href => crate::Urls::new(ctx.base_url.clone()).analysis().directions(a.hash.clone())}, "Direction"]],
+                                ]
+                            ],
                             td![
                                 C!["btn", "btn-primary"],
                                 ev(Ev::Click, move |_| Msg::AddressDelete(id)),

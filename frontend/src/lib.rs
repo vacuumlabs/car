@@ -15,14 +15,11 @@ mod model;
 mod pages;
 mod request;
 
-const STORAGE_KEY: &str = "CAR";
-
 const CHAIN: &str = "chain";
 const TAG: &str = "tag";
 const SERVICE: &str = "service";
 const ADDRESS: &str = "address";
 const TASK: &str = "task";
-const TRANSACTION: &str = "transaction";
 const LIST: &str = "list";
 const ANALYSIS: &str = "analysis";
 
@@ -66,11 +63,13 @@ impl Page {
             None => Self::Home,
             Some(CHAIN) => pages::chain::Page::init(url, &mut orders.proxy(Msg::Chain))
                 .map_or(Self::NotFound, Self::Chain),
+
             Some(TAG) => pages::tag::Page::init(url, &mut orders.proxy(Msg::Tag))
                 .map_or(Self::NotFound, Self::Tag),
 
             Some(SERVICE) => pages::service::Page::init(url, &mut orders.proxy(Msg::Service))
                 .map_or(Self::NotFound, Self::Service),
+
             Some(ADDRESS) => pages::address::Page::init(url, &mut orders.proxy(Msg::Address))
                 .map_or(Self::NotFound, Self::Address),
 
@@ -170,22 +169,27 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             log(url.path());
             model.page = Page::init(url, orders);
         }
+
         Msg::LoadContext => {
             orders.perform_cmd(async { Msg::ChainsFetched(request::chain::list().await) });
             orders.perform_cmd(async { Msg::ServicesFetched(request::service::list().await) });
             orders.perform_cmd(async { Msg::TagsFetched(request::tag::list().await) });
         }
+
         Msg::AddressChanged(value) => {
             model.address = value;
             orders.skip();
         }
+
         Msg::AddressGo => {
             Urls::new(model.ctx.base_url.clone())
                 .address()
                 .list_by_address(model.address.clone())
                 .go_and_load();
         }
+
         Msg::ExternalAddress(value) => Url::go_and_load_with_str(value),
+
         Msg::ChainsFetched(Ok(chains)) => {
             model.ctx.chains = chains
                 .iter()
@@ -193,15 +197,18 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .collect();
             log(model.ctx.chains.clone());
         }
+
         Msg::ServicesFetched(Ok(services)) => {
             model.ctx.services = services
                 .iter()
                 .map(|s| (s.id.unwrap(), s.clone()))
                 .collect();
         }
+
         Msg::TagsFetched(Ok(tags)) => {
             model.ctx.tags = tags.iter().map(|t| (t.id.unwrap(), t.clone())).collect();
         }
+
         Msg::Chain(sub_msg) => {
             if let Page::Chain(sub_page) = &mut model.page {
                 pages::chain::update(
@@ -212,6 +219,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 )
             }
         }
+
         Msg::Tag(sub_msg) => {
             if let Page::Tag(sub_page) = &mut model.page {
                 pages::tag::update(
@@ -222,6 +230,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 )
             }
         }
+
         Msg::Service(sub_msg) => {
             if let Page::Service(sub_page) = &mut model.page {
                 pages::service::update(
@@ -232,6 +241,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 )
             }
         }
+
         Msg::Address(sub_msg) => {
             if let Page::Address(sub_page) = &mut model.page {
                 pages::address::update(
@@ -242,6 +252,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 )
             }
         }
+
         Msg::List(sub_msg) => {
             if let Page::List(sub_page) = &mut model.page {
                 pages::list::update(
@@ -249,6 +260,17 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     sub_page,
                     &mut model.ctx,
                     &mut orders.proxy(Msg::List),
+                )
+            }
+        }
+
+        Msg::Analysis(sub_msg) => {
+            if let Page::Analysis(sub_page) = &mut model.page {
+                pages::analysis::update(
+                    sub_msg,
+                    sub_page,
+                    &mut model.ctx,
+                    &mut orders.proxy(Msg::Analysis),
                 )
             }
         }
@@ -265,9 +287,12 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
         pages::view_header(&model.ctx.base_url, model),
         match &model.page {
             Page::Home => pages::home::view(),
+
             Page::Chain(chain_model) =>
                 pages::chain::view(chain_model, &model.ctx).map_msg(Msg::Chain),
+
             Page::Tag(tag_model) => pages::tag::view(tag_model, &model.ctx).map_msg(Msg::Tag),
+
             Page::Service(service_model) =>
                 pages::service::view(service_model, &model.ctx).map_msg(Msg::Service),
 
@@ -275,6 +300,7 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
                 pages::address::view(address_model, &model.ctx).map_msg(Msg::Address),
 
             Page::List(list_model) => pages::list::view(list_model, &model.ctx).map_msg(Msg::List),
+
             Page::Analysis(analysis_model) =>
                 pages::analysis::view(analysis_model, &model.ctx).map_msg(Msg::Analysis),
 
@@ -282,7 +308,6 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
         },
     ]
 }
-
 // ------ ------
 //     Start
 // ------ ------

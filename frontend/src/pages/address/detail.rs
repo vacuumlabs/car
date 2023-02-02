@@ -34,7 +34,7 @@ pub fn update(
 ) {
     match msg {
         Msg::Load => {
-            if let Ok(id) = model.slug.parse::<i32>() {
+            if let Ok(id) = model.slug.parse::<i64>() {
                 orders.perform_cmd(async move {
                     Msg::AddressFetched(crate::request::address::detail(id).await)
                 });
@@ -198,6 +198,23 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                     ],
                 ]
             ],
+            div![ul![
+                C!["list-group"],
+                li![
+                    C!["list-group-item"],
+                    a![
+                        attrs! {At::Href => crate::Urls::new(ctx.base_url.clone()).analysis().relations(address.hash.clone())},
+                        "Relation"
+                    ]
+                ],
+                li![
+                    C!["list-group-item"],
+                    a![
+                        attrs! {At::Href => crate::Urls::new(ctx.base_url.clone()).analysis().directions(address.hash.clone())},
+                        "Direction"
+                    ]
+                ],
+            ]],
             div![
                 C!["container"],
                 h3!["Tags"],

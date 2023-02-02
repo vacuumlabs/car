@@ -93,6 +93,7 @@ pub fn update(
 }
 
 pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
+    
     let filtered_chains = ctx
                                     .chains
                                     .values()

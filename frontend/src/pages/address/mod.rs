@@ -127,7 +127,7 @@ impl<'a> Urls<'a> {
                     .join(","),
             )
     }
-    pub fn detail(self, id: i32) -> Url {
+    pub fn detail(self, id: i64) -> Url {
         self.base_url()
             .add_path_part(DETAIL)
             .add_path_part(id.to_string())

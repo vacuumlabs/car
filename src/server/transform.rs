@@ -1,24 +1,52 @@
-use crate::server::{AddressRef, PrivAddress};
+use crate::server::{Address, AddressRef, AddressRefHuman, PrivAddress};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// Map adress ID to internal format
+fn map_address_query(address_list: &BTreeSet<i64>) -> Statement {
+    Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        r#"SELECT id, chain, title, hash, tags, services FROM address WHERE id = ANY($1);"#,
+        vec![address_list
+            .iter()
+            .map(|a| a.clone())
+            .collect::<Vec<i64>>()
+            .into()],
+    )
+}
+
 pub async fn map_addresses(
+    db: &DatabaseConnection,
+    address_list: &mut BTreeSet<i64>,
+    address_map: &mut BTreeMap<i64, PrivAddress>,
+) {
+    let statement = map_address_query(address_list);
+
+    if let Ok(query) = db.query_all(statement.clone()).await {
+        for row in query.iter() {
+            let id: i64 = row.try_get("", "id").unwrap();
+            let hash = row.try_get("", "hash").unwrap();
+            address_map.insert(
+                id,
+                PrivAddress {
+                    title: row.try_get("", "title").unwrap_or(String::new()),
+                    chain: row.try_get("", "chain").unwrap(),
+                    hash: hash,
+                    tags: row.try_get("", "tags").unwrap_or(Vec::new()),
+                    services: row.try_get("", "services").unwrap_or(Vec::new()),
+                },
+            );
+        }
+    }
+}
+/// Map adress ID to internal format
+pub async fn map_addresses_extended(
     db: &DatabaseConnection,
     address_list: &mut BTreeSet<i64>,
     address_map: &mut BTreeMap<i64, PrivAddress>,
     tag_list: &mut BTreeSet<i32>,
     service_list: &mut BTreeSet<i32>,
 ) {
-    let statement = Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        r#"SELECT id, title, hash, tags, services FROM address WHERE id = ANY($1);"#,
-        vec![address_list
-            .iter()
-            .map(|a| a.clone())
-            .collect::<Vec<i64>>()
-            .into()],
-    );
+    let statement = map_address_query(address_list);
 
     if let Ok(query) = db.query_all(statement.clone()).await {
         for row in query.iter() {
@@ -39,6 +67,7 @@ pub async fn map_addresses(
                 id,
                 PrivAddress {
                     title: row.try_get("", "title").unwrap_or(hex::encode(&hash)),
+                    chain: row.try_get("", "chain").unwrap(),
                     hash: hash,
                     tags: tags,
                     services: services,
@@ -100,17 +129,18 @@ pub async fn map_services(
     }
 }
 
-pub fn address_ref(
+pub fn address_ref_human(
     address_map: &BTreeMap<i64, PrivAddress>,
     tag_map: &BTreeMap<i32, String>,
     service_map: &BTreeMap<i32, String>,
     addresses: BTreeMap<i64, i32>,
-) -> Vec<AddressRef> {
-    let mut result: Vec<AddressRef> = addresses
+) -> Vec<AddressRefHuman> {
+    let mut result: Vec<AddressRefHuman> = addresses
         .iter()
         .map(|(address_id, address_count)| {
             if let Some(address) = address_map.get(address_id) {
-                return AddressRef {
+                return AddressRefHuman {
+                    id: address_id.clone(),
                     hex: hex::encode(&address.hash),
                     human: address.title.clone(),
                     quantity: address_count.clone(),
@@ -126,9 +156,31 @@ pub fn address_ref(
                         .collect(),
                 };
             }
-            AddressRef::default()
+            AddressRefHuman::default()
         })
         .collect();
     result.sort_by(|a, b| b.quantity.cmp(&a.quantity));
     result
+}
+
+pub fn address_ref(
+    address_map: &BTreeMap<i64, PrivAddress>,
+    addresses: BTreeMap<i64, i32>,
+) -> Vec<AddressRef> {
+    addresses
+        .iter()
+        .map(|(address_id, address_count)| {
+            if let Some(address) = address_map.get(address_id) {
+                return AddressRef {
+                    id: address_id.clone(),
+                    hex: hex::encode(&address.hash),
+                    human: address.title.clone(),
+                    quantity: address_count.clone(),
+                    tags: address.tags.clone(),
+                    services: address.services.clone(),
+                };
+            }
+            AddressRef::default()
+        })
+        .collect()
 }
