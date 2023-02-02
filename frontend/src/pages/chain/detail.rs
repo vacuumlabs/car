@@ -63,64 +63,98 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
         div![
             C!["container"],
             div![
-                C!["text-right"],
+                C!["panel panel-default"],
                 div![
-                    C!["btn", "btn-primary", "right"],
-                    ev(Ev::Click, |_| Msg::EditToggle),
-                    "Edit"
+                    C!["panel-heading"],
+                    div![
+                        C!["row"],
+                        style!{
+                            St::Display => "flex",
+                            St::AlignItems => "center",
+                        },
+                        div![
+                            C!["col-xs-11"],
+                            h3![
+                                C!["heading-title"],
+                                style!{
+                                    // Bootstrap has a default margin on headers,
+                                    // removed to align with the button
+                                    St::MarginTop => "0px",
+                                    St::MarginBottom => "0px",
+                                },
+                                "Chain Detail"
+                            ],
+                        ],
+                        div![
+                            C!["col-xs-1"],
+                            div![
+                                C!["btn", "btn-primary"],
+                                ev(Ev::Click, |_| Msg::EditToggle),
+                                "Edit"
+                            ],
+                        ]
+                    ],
+
                 ],
-            ],
-            if !model.edit {
                 div![
-                    div![
-                        C!["form-group"],
-                        label![attrs! {At::For => "chain-create-id"}, "#"],
-                        span![
-                            attrs! {At::Id => "chain-create-id"},
-                            chain.id.unwrap().to_string()
-                        ],
-                    ],
-                    div![
-                        C!["form-group"],
-                        label![attrs! {At::For => "chain-create-title"}, "Title"],
-                        span![
-                            attrs![At::Id => "chain-create-title"],
-                            chain.title.clone() //input_ev(Ev::Input, |value| Msg::ChainNewTitleChanged(value)),
-                        ],
-                    ],
+                    C!["panel-body"],
+                    if !model.edit {
+                        form![
+                            div![
+                                C!["form-group"],
+                                label![attrs! {At::For => "chain-create-id"}, "Chain ID"],
+                                p![
+                                    attrs! {At::Id => "chain-create-id"},
+                                    chain.id.unwrap().to_string()
+                                ],
+                            ],
+                            div![
+                                C!["form-group"],
+                                label![attrs! {At::For => "chain-create-title"}, "Title"],
+                                p![
+                                    attrs![At::Id => "chain-create-title"],
+                                    chain.title.clone() //input_ev(Ev::Input, |value| Msg::ChainNewTitleChanged(value)),
+                                ],
+                            ],
+                        ]
+                    } else {
+                        div![
+                            div![
+                                C!["form-group"],
+                                label![attrs! {At::For => "chain-create-id"}, "#"],
+                                span![
+                                    C!["form-control"],
+                                    attrs! {At::Id => "chain-create-id"},
+                                    chain.id.unwrap().to_string()
+                                ],
+                            ],
+                            div![
+                                C!["form-group"],
+                                label![attrs! {At::For => "chain-create-title"}, "Title"],
+                                input![
+                                    C!["form-control"],
+                                    attrs! {
+                                        At::Id => "chain-create-title",
+                                        At::Value => chain.title.clone()
+                                    },
+                                    input_ev(Ev::Input, |value| Msg::ChainTitleChanged(value)),
+                                ],
+                            ],
+                            button![
+                                C!["btn", "btn-primary"],
+                                "Save",
+                                ev(Ev::Click, |_| Msg::Save),
+                            ]
+                        ]
+                    }
+
                 ]
-            } else {
-                div![
-                    div![
-                        C!["form-group"],
-                        label![attrs! {At::For => "chain-create-id"}, "#"],
-                        span![
-                            C!["form-control"],
-                            attrs! {At::Id => "chain-create-id"},
-                            chain.id.unwrap().to_string()
-                        ],
-                    ],
-                    div![
-                        C!["form-group"],
-                        label![attrs! {At::For => "chain-create-title"}, "Title"],
-                        input![
-                            C!["form-control"],
-                            attrs! {
-                                At::Id => "chain-create-title",
-                                At::Value => chain.title.clone()
-                            },
-                            input_ev(Ev::Input, |value| Msg::ChainTitleChanged(value)),
-                        ],
-                    ],
-                    button![
-                        C!["btn", "btn-primary"],
-                        "Save",
-                        ev(Ev::Click, |_| Msg::Save),
-                    ]
-                ]
-            }
+            ]
         ]
     } else {
-        div!["Not found"]
+        h3![
+            C!["text-center"],
+            "Chain ID not found",
+        ]
     }
 }
