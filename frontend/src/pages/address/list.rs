@@ -175,6 +175,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 thead![
                     tr![
                         th!["#"], 
+                        th!["Chain"],
                         th!["Title"],
                         th!["Hash"],
                         th!["Tags"],
@@ -193,12 +194,16 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                                     attrs!{At::Href => Urls::new(ctx.base_url.clone()).address().detail(id.clone())},
                                     id.to_string()
                                 ],
-                                ],
+                            ],
+                            td![ctx.chains.get(&a.chain).unwrap().title.clone()],
                             td![a.title.clone().unwrap_or(a.hash.clone())],
                             td![a.hash.clone()],
                             td![a.tags.iter().filter(|t| ctx.tags.contains_key(t)).map(move |t| span![C!["badge"], ctx.tags[t].title.clone()])],
                             td![a.services.iter().filter(|s| ctx.services.contains_key(s)).map(move |s| span![C!["badge"], ctx.services[s].title.clone()])],
-                            td![a![attrs!{At::Href => crate::Urls::new(ctx.base_url.clone()).analysis().relations(a.hash.clone())}, "Relation"]],
+                            td![
+                                a![attrs!{At::Href => crate::Urls::new(ctx.base_url.clone()).analysis().relations(a.hash.clone())}, "Relation"],
+                                a![attrs!{At::Href => crate::Urls::new(ctx.base_url.clone()).analysis().directions(a.hash.clone())}, "Direction"],
+                            ],
                             td![
                                 C!["btn", "btn-primary"],
                                 ev(Ev::Click, move |_| Msg::AddressDelete(id)),

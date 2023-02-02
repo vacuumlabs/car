@@ -76,6 +76,7 @@ pub struct Transaction {
 #[derive(Debug)]
 pub struct PrivAddress {
     pub title: String,
+    pub chain: i32,
     pub hash: Vec<u8>,
     pub tags: Vec<i32>,
     pub services: Vec<i32>,
@@ -134,6 +135,7 @@ pub async fn run(bind: &SocketAddr, db: &DatabaseConnection) {
             .or(transaction::delete(db.clone()))
             // Analysis
             .or(analysis::relation(db.clone()))
+            .or(analysis::relation_human(db.clone()))
             .or(warp::fs::dir(static_path.clone()))
             .or(warp::fs::file(static_path + "/index.html"))
     });

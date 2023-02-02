@@ -1,8 +1,54 @@
 use crate::entity::address;
 use crate::server::{transform, AddressRef, AddressRelation, AddressRelationHuman, PrivAddress};
 use rweb::*;
-use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, Statement};
+use sea_orm::{
+    ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, QueryResult, Statement,
+};
 use std::collections::{BTreeMap, BTreeSet};
+
+fn process_query(
+    query: Vec<QueryResult>,
+    address_id: &i64,
+    address_list: &mut BTreeSet<i64>,
+    inputs: &mut BTreeMap<i64, i32>,
+    outputs: &mut BTreeMap<i64, i32>,
+    mixed_in: &mut BTreeMap<i64, i32>,
+    mixed_out: &mut BTreeMap<i64, i32>,
+) {
+    for row in query.iter() {
+        let addresses_from: Vec<i64> = row.try_get("", "from").unwrap();
+        let addresses_to: Vec<i64> = row.try_get("", "to").unwrap();
+
+        let mixed_in_state = addresses_from.contains(&address_id);
+        let mixed_out_state = addresses_to.contains(&address_id);
+
+        // Proces input adress
+        for address in addresses_from {
+            // Add input only, if the original address is present in output
+            address_list.insert(address);
+            if mixed_out_state {
+                inputs.insert(address, inputs.get(&address).unwrap_or(&0) + 1);
+            }
+            // Add mixin only if is original address present in input
+            if mixed_in_state {
+                mixed_in.insert(address, mixed_in.get(&address).unwrap_or(&0) + 1);
+            }
+        }
+
+        // Proces output adress
+        for address in addresses_to {
+            address_list.insert(address);
+            // Add output only if the original address is present in input
+            if mixed_in_state {
+                outputs.insert(address, outputs.get(&address).unwrap_or(&0) + 1);
+            }
+            // Add mixin only if is original address present in output
+            if mixed_out_state {
+                mixed_out.insert(address, mixed_out.get(&address).unwrap_or(&0) + 1);
+            }
+        }
+    }
+}
 
 #[get("/api/analysis/address/{address}")] // TODO: Chain select?
 #[openapi(description = "Test description?")]
@@ -21,8 +67,43 @@ pub async fn relation(
             Ok(Some(result)) => {
                 let mut address_list: BTreeSet<i64> = BTreeSet::new();
                 let mut address_map: BTreeMap<i64, PrivAddress> = BTreeMap::new();
+                let mut inputs: BTreeMap<i64, i32> = BTreeMap::new();
+                let mut outputs: BTreeMap<i64, i32> = BTreeMap::new();
+                let mut mixed_in: BTreeMap<i64, i32> = BTreeMap::new();
+                let mut mixed_out: BTreeMap<i64, i32> = BTreeMap::new();
 
-                Err(warp::reject::not_found())
+                let address_id: i64 = result.try_get("", "id").unwrap();
+                address_list.insert(address_id);
+
+                let statement = Statement::from_sql_and_values(
+                    DbBackend::Postgres,
+                    r#"SELECT "from", "to" FROM transaction WHERE $1 = ANY("from") or $1 = ANY("to");"#,
+                    vec![address_id.into()],
+                );
+                if let Ok(query) = db.query_all(statement).await {
+                    process_query(
+                        query,
+                        &address_id,
+                        &mut address_list,
+                        &mut inputs,
+                        &mut outputs,
+                        &mut mixed_in,
+                        &mut mixed_out,
+                    );
+                }
+
+                let address_detail = address_map.get(&address_id).unwrap();
+                Ok(AddressRelation {
+                    hex: address.clone(),
+                    human: address_detail.title.clone(),
+                    inputs: transform::address(&address_map, inputs),
+                    outputs: transform::address(&address_map, outputs),
+                    mixed_in: transform::address(&address_map, mixed_in),
+                    mixed_out: transform::address(&address_map, mixed_out),
+                    tags: address_detail.tags.clone(),
+                    services: address_detail.services.clone(),
+                }
+                .into())
             }
             _ => Err(warp::reject::not_found()),
         };
@@ -67,44 +148,19 @@ pub async fn relation_human(
                     vec![address_id.into()],
                 );
                 if let Ok(query) = db.query_all(statement).await {
-                    for row in query.iter() {
-                        let addresses_from: Vec<i64> = row.try_get("", "from").unwrap();
-                        let addresses_to: Vec<i64> = row.try_get("", "to").unwrap();
-
-                        let mixed_in_state = addresses_from.contains(&address_id);
-                        let mixed_out_state = addresses_to.contains(&address_id);
-
-                        // Proces input adress
-                        for address in addresses_from {
-                            // Add input only, if the original address is present in output
-                            address_list.insert(address);
-                            if mixed_out_state {
-                                inputs.insert(address, inputs.get(&address).unwrap_or(&0) + 1);
-                            }
-                            // Add mixin only if is original address present in input
-                            if mixed_in_state {
-                                mixed_in.insert(address, mixed_in.get(&address).unwrap_or(&0) + 1);
-                            }
-                        }
-
-                        // Proces output adress
-                        for address in addresses_to {
-                            address_list.insert(address);
-                            // Add output only if the original address is present in input
-                            if mixed_in_state {
-                                outputs.insert(address, outputs.get(&address).unwrap_or(&0) + 1);
-                            }
-                            // Add mixin only if is original address present in output
-                            if mixed_out_state {
-                                mixed_out
-                                    .insert(address, mixed_out.get(&address).unwrap_or(&0) + 1);
-                            }
-                        }
-                    }
+                    process_query(
+                        query,
+                        &address_id,
+                        &mut address_list,
+                        &mut inputs,
+                        &mut outputs,
+                        &mut mixed_in,
+                        &mut mixed_out,
+                    );
                 }
 
                 // Map DB resources
-                transform::map_addresses(
+                transform::map_addresses_extended(
                     &db,
                     &mut address_list,
                     &mut address_map,
