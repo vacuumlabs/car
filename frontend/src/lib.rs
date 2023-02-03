@@ -5,6 +5,7 @@ use seed::{
     *,
 };
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use std::collections::HashMap;
 use std::{
     cell::{Cell, RefCell},
@@ -14,6 +15,8 @@ use std::{
 mod model;
 mod pages;
 mod request;
+
+const LOCAL_STORAGE_KEY: &str = "crypto-address-relation-storage";
 
 const CHAIN: &str = "chain";
 const TAG: &str = "tag";
@@ -30,6 +33,7 @@ pub struct Context {
     pub chains: HashMap<i32, model::Chain>,
     pub tags: HashMap<i32, model::Tag>,
     pub services: HashMap<i32, model::Service>,
+    pub lists: HashMap<Uuid, model::StoredList>,
 }
 
 impl Default for Context {
@@ -40,6 +44,7 @@ impl Default for Context {
             chains: HashMap::new(),
             tags: HashMap::new(),
             services: HashMap::new(),
+            lists: LocalStorage::get(LOCAL_STORAGE_KEY).unwrap_or_default()
         }
     }
 }
