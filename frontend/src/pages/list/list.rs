@@ -93,9 +93,8 @@ pub fn update(
 }
 
 pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
-    let ctx_lists: Vec<crate::model::StoredList> = ctx.lists.values().cloned().collect();
-    let filtered_lists = ctx_lists.iter()
-                                    .filter(|l| Uuid::to_string(&l.id).to_lowercase().contains(&model.filter))
+    let filtered_lists = ctx.lists.values()
+                                    .filter(|l| Uuid::to_string(&l.id).to_lowercase().contains(&model.filter) || l.description.to_lowercase().contains(&model.filter))
                                     .map(|l| l.clone())
                                     .collect::<Vec<StoredList>>();
 
