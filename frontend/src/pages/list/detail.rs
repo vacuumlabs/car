@@ -1,21 +1,23 @@
-use crate::{model::Service, Context};
-use seed::{prelude::*, *};
+use std::collections::HashMap;
+
+use crate::{model::StoredList, Context, LOCAL_STORAGE_KEY};
+use seed::{prelude::*, *, futures::task::LocalSpawn};
+use uuid::Uuid;
 
 #[derive(Default, Debug)]
 pub struct Model {
     pub slug: String,
     pub edit: bool,
-    pub service: Option<Service>,
+    pub list: Option<StoredList>,
+    pub lists: Vec<StoredList>,
     pub saved: Option<bool>,
 }
 
 #[derive(Debug)]
 pub enum Msg {
     Load,
-    ServiceFetched(fetch::Result<crate::model::Service>),
     EditToggle,
-    ServiceTitleChanged(String),
-
+    ListDescriptionChanged(String),
     Save,
 }
 
@@ -27,39 +29,32 @@ pub fn update(
 ) {
     match msg {
         Msg::Load => {
-            if let Ok(id) = model.slug.parse::<i32>() {
-                orders.perform_cmd(async move {
-                    Msg::ServiceFetched(crate::request::service::detail(id).await)
-                });
-            }
-        }
-        Msg::ServiceFetched(Ok(service)) => {
-            model.edit = false;
-            model.service = Some(service);
+            let list_map: HashMap<Uuid, StoredList> = LocalStorage::get(LOCAL_STORAGE_KEY).unwrap_or_default();
+            ctx.lists = list_map;
+
+            match model.slug.parse::<Uuid>() {
+                    Ok(id) => model.list = ctx.lists.get(&id).cloned(),
+                    Err(_) => model.list = None,
+                };
         }
         Msg::EditToggle => {
             model.edit = !model.edit;
         }
-        Msg::ServiceTitleChanged(value) => {
-            if let Some(service) = &mut model.service {
-                log(&value);
-                service.title = value;
-                model.saved = Some(false);
+        Msg::ListDescriptionChanged(value) => {
+            if let Some(list) = &mut model.list {
+                list.description = value;
             }
         }
         Msg::Save => {
-            if let Some(service) = model.service.clone() {
-                orders.perform_cmd(async move {
-                    Msg::ServiceFetched(crate::request::service::save(service).await)
-                });
-            }
+            ctx.lists.insert(model.list.as_ref().unwrap().id, model.list.clone().unwrap());        
+            LocalStorage::insert(LOCAL_STORAGE_KEY, &ctx.lists);
         }
         _ => {}
     }
 }
 
 pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
-    if let Some(service) = &model.service {
+    if let Some(list) = &model.list {
         div![
             C!["container"],
             div![
@@ -77,15 +72,15 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                         label![attrs! {At::For => "service-create-id"}, "#"],
                         span![
                             attrs! {At::Id => "service-create-id"},
-                            service.id.unwrap().to_string()
+                            list.id.to_string()
                         ],
                     ],
                     div![
                         C!["form-group"],
-                        label![attrs! {At::For => "service-create-title"}, "Title"],
+                        label![attrs! {At::For => "service-create-description"}, "Description"],
                         span![
-                            attrs![At::Id => "service-create-title"],
-                            service.title.clone() //input_ev(Ev::Input, |value| Msg::ServiceNewTitleChanged(value)),
+                            attrs![At::Id => "service-create-description"],
+                            list.description.clone()
                         ],
                     ],
                 ]
@@ -97,19 +92,19 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                         span![
                             C!["form-control"],
                             attrs! {At::Id => "service-create-id"},
-                            service.id.unwrap().to_string()
+                            list.id.to_string()
                         ],
                     ],
                     div![
                         C!["form-group"],
-                        label![attrs! {At::For => "service-create-title"}, "Title"],
+                        label![attrs! {At::For => "service-create-description"}, "Description"],
                         input![
                             C!["form-control"],
                             attrs! {
-                                At::Id => "service-create-title",
-                                At::Value => service.title.clone()
+                                At::Id => "service-create-description",
+                                At::Value => list.description.clone()
                             },
-                            input_ev(Ev::Input, |value| Msg::ServiceTitleChanged(value)),
+                            input_ev(Ev::Input, |value| Msg::ListDescriptionChanged(value)),
                         ],
                     ],
                     button![
