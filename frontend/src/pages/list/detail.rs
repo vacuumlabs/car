@@ -9,7 +9,6 @@ pub struct Model {
     pub slug: String,
     pub edit: bool,
     pub list: Option<StoredList>,
-    pub lists: Vec<StoredList>,
     pub saved: Option<bool>,
 }
 
@@ -69,39 +68,50 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 div![
                     div![
                         C!["form-group"],
-                        label![attrs! {At::For => "service-create-id"}, "#"],
+                        label![attrs! {At::For => "list-create-id"}, "#"],
                         span![
-                            attrs! {At::Id => "service-create-id"},
+                            attrs! {At::Id => "list-create-id"},
                             list.id.to_string()
                         ],
                     ],
                     div![
                         C!["form-group"],
-                        label![attrs! {At::For => "service-create-description"}, "Description"],
+                        label![attrs! {At::For => "list-create-description"}, "Description"],
                         span![
-                            attrs![At::Id => "service-create-description"],
+                            attrs![At::Id => "list-create-description"],
                             list.description.clone()
                         ],
                     ],
+                    div![
+                        C!["form-group"],
+                        label![attrs! {At::For => "list-addresses"}, "Addresses"],
+                        ul![
+                            attrs! {At::Id => "list-addresses"},
+                            list.addresses.iter().map(
+                                |it| ul![it]
+                                )
+                        ]
+                    ],
+
                 ]
             } else {
                 div![
                     div![
                         C!["form-group"],
-                        label![attrs! {At::For => "service-create-id"}, "#"],
+                        label![attrs! {At::For => "list-create-id"}, "#"],
                         span![
                             C!["form-control"],
-                            attrs! {At::Id => "service-create-id"},
+                            attrs! {At::Id => "list-create-id"},
                             list.id.to_string()
                         ],
                     ],
                     div![
                         C!["form-group"],
-                        label![attrs! {At::For => "service-create-description"}, "Description"],
+                        label![attrs! {At::For => "list-create-description"}, "Description"],
                         input![
                             C!["form-control"],
                             attrs! {
-                                At::Id => "service-create-description",
+                                At::Id => "list-create-description",
                                 At::Value => list.description.clone()
                             },
                             input_ev(Ev::Input, |value| Msg::ListDescriptionChanged(value)),

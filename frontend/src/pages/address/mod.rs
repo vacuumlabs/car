@@ -27,8 +27,11 @@ impl Page {
                     Some(Page::List(list::Model {
                         filter: String::new(),
                         page_type: list::PageType::Address(String::from(address)),
-                        new_address: None,
                         addresses: Vec::new(),
+                        new_address: None,
+                        modal_address: None,
+                        show_modal: false,
+                        selected_list_id: None,
                     }))
                 }
                 _ => None,
@@ -43,8 +46,11 @@ impl Page {
                     Some(Page::List(list::Model {
                         filter: String::new(),
                         page_type: list::PageType::Tag(tag_id),
-                        new_address: None,
                         addresses: Vec::new(),
+                        new_address: None,
+                        modal_address: None,
+                        show_modal: false,
+                        selected_list_id: None,
                     }))
                 }
                 _ => None,
@@ -59,8 +65,11 @@ impl Page {
                     Some(Page::List(list::Model {
                         filter: String::new(),
                         page_type: list::PageType::Service(service_id),
-                        new_address: None,
                         addresses: Vec::new(),
+                        new_address: None,
+                        modal_address: None,
+                        show_modal: false,
+                        selected_list_id: None,
                     }))
                 }
                 _ => None,
