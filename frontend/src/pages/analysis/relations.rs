@@ -296,7 +296,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 div![C!["panel-heading"], h3![C!["panel-title"], "Inputs"]],
                 div![
                     C!["panel-body"],
-                    style! {St::Height => "300px", St::OverflowY => "scroll"},
+                    style! {St::MaxHeight => "300px", St::OverflowY => "scroll"},
                     ul![
                         C!["list-group"],
                         view_relation(model, ctx, &model.relations.inputs)
@@ -311,7 +311,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 div![C!["panel-heading"], h3![C!["panel-title"], "Outputs"]],
                 div![
                     C!["panel-body"],
-                    style! {St::Height => "300px", St::OverflowY => "scroll"},
+                    style! {St::MaxHeight => "300px", St::OverflowY => "scroll"},
                     view_relation(model, ctx, &model.relations.outputs),
                 ]
             ]
@@ -323,7 +323,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 div![C!["panel-heading"], h3![C!["panel-title"], "Mixed IN"]],
                 div![
                     C!["panel-body"],
-                    style! {St::Height => "300px", St::OverflowY => "scroll"},
+                    style! {St::MaxHeight => "300px", St::OverflowY => "scroll"},
                     ul![
                         C!["list-group"],
                         view_relation(model, ctx, &model.relations.mixed_in)
@@ -338,7 +338,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 div![C!["panel-heading"], h3![C!["panel-title"], "Mixed OUT"]],
                 div![
                     C!["panel-body"],
-                    style! {St::Height => "300px", St::OverflowY => "scroll"},
+                    style! {St::MaxHeight => "300px", St::OverflowY => "scroll"},
                     view_relation(model, ctx, &model.relations.mixed_out),
                 ]
             ]

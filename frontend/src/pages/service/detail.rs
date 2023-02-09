@@ -118,7 +118,17 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                         ev(Ev::Click, |_| Msg::Save),
                     ]
                 ]
-            }
+            },
+            div![ul![
+                C!["list-group"],
+                li![
+                    C!["list-group-item"],
+                    a![
+                        attrs! {At::Href => crate::Urls::new(ctx.base_url.clone()).address().list_by_service(service.id.unwrap().clone())},
+                        "Addresses"
+                    ]
+                ],
+            ]]
         ]
     } else {
         div!["Not found"]

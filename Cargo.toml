@@ -1,12 +1,23 @@
 [package]
 name = "car"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+version = { workspace = true ]
+edition = { workspace = true }
 
 [workspace]
 members = [".", "migration", "frontend"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+[workspace.dependencies]
+serde = { version = "1.0.148", features = ["derive"]}
+tracing-subscriber = "0.3.9"
+tracing = "0.1.31"
+hex = "0.4.3"
+
+# cardano
+pallas-addresses = "0.15.0
 
 [dependencies]
 async-trait = "0.1.59"
@@ -14,10 +25,9 @@ sea-orm = { version = "0.10.4", features = [ "sqlx-postgres", "runtime-tokio-rus
 sea-query = {version = "0.27.2", features = [ "postgres-array", "with-json"]}
 tokio = { version = "1.16.1", features = ["full"] }
 rweb = { version = "0.6", features = ["openapi"] }
-serde = { version = "1.0.148", features = ["derive"]}
-tracing-subscriber = "0.3.9"
-tracing = "0.1.31"
-hex = "0.4.3"
 
-# cardano
-pallas-addresses = "0.15.0"
+serde = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing = { workspace = true }
+hex = { workspace = true }
+pallas-addresses = { workspace = true }

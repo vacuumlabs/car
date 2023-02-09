@@ -97,18 +97,12 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
     let filtered_services = ctx
                                     .services
                                     .values()
-                                    .into_iter()
-                                    .filter(|s| s.title.to_lowercase().contains(&model.filter))
-                                    .map(|s| s.clone())
-                                    .collect::<Vec<Service>>();
+                                    .filter(|s| s.title.to_lowercase().contains(&model.filter));
+                                    
 
-    let size = filtered_services.len();
-    let start = if model.pagination.start > size { size } else { model.pagination.start };
-    let end = if model.pagination.start + ctx.page_size > size { size } else { model.pagination.start + ctx.page_size};
+    let size = filtered_services.clone().count();
 
-    let services: Vec<Service> = filtered_services
-                        [start..end]
-                        .iter()
+    let services: Vec<Service> = filtered_services.skip(model.pagination.start).take(ctx.page_size)
                         .map(|c| c.clone()).collect();
     
     div![

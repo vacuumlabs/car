@@ -39,7 +39,7 @@ pub struct Context {
 impl Default for Context {
     fn default() -> Self {
         Self {
-            page_size: 50,
+            page_size: 10,
             base_url: Url::default(),
             chains: HashMap::new(),
             tags: HashMap::new(),

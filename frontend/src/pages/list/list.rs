@@ -94,17 +94,13 @@ pub fn update(
 
 pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
     let filtered_lists = ctx.lists.values()
-                                    .filter(|l| Uuid::to_string(&l.id).to_lowercase().contains(&model.filter) || l.description.to_lowercase().contains(&model.filter))
-                                    .map(|l| l.clone())
-                                    .collect::<Vec<StoredList>>();
+                                    .filter(
+                                        |l| 
+                                            Uuid::to_string(&l.id).to_lowercase().contains(&model.filter) || l.description.to_lowercase().contains(&model.filter));
 
-    let size = filtered_lists.len();
-    let start = if model.pagination.start > size { size } else { model.pagination.start };
-    let end = if model.pagination.start + ctx.page_size > size { size } else { model.pagination.start + ctx.page_size};
+    let size = filtered_lists.clone().count();
 
-    let lists: Vec<StoredList> = filtered_lists
-                        [start..end]
-                        .iter()
+    let lists: Vec<StoredList> = filtered_lists.skip(model.pagination.start).take(ctx.page_size)
                         .map(|c| c.clone()).collect();
     
     div![
