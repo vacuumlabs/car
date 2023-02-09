@@ -195,8 +195,8 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                                     C!["btn", "btn-primary"],
                                     ev(Ev::Click, move |_| Msg::ChainDelete(id)),
                                     "DELETE"
-                                ]
-                            ]
+                                ],
+                            ],
                         ]
                     })
                     .collect::<Vec<Node<Msg>>>()]

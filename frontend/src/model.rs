@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone)]
 pub struct Chain {
@@ -53,7 +54,7 @@ pub struct AddressRef {
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone)]
 pub struct StoredList {
-    pub id: String,
+    pub id: Uuid,
     pub description: String,
     pub addresses: Vec<i64>,
 }

@@ -1,5 +1,8 @@
-use crate::{model::Address, Context, Urls};
-use seed::{prelude::*, *};
+use std::collections::HashMap;
+
+use crate::{model::{Address, StoredList}, Context, Urls, LOCAL_STORAGE_KEY};
+use seed::{prelude::{*, web_sys::Event}, *};
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub enum PageType {
@@ -15,6 +18,9 @@ pub struct Model {
     pub filter: String,
     pub addresses: Vec<Address>,
     pub new_address: Option<Address>,
+    pub modal_address: Option<Address>,
+    pub show_modal: bool,
+    pub selected_list_id: Option<Uuid>
 }
 
 #[derive(Debug)]
@@ -23,33 +29,40 @@ pub enum Msg {
     LoadByTag(i32),
     LoadByService(i32),
     LoadByIds(Vec<i64>),
-    AddresssFetched(fetch::Result<Vec<crate::model::Address>>),
+    AddressFetched(fetch::Result<Vec<crate::model::Address>>),
     AddressNew,
     AddressNewTitleChanged(String),
     AddressCreate,
     AddressCreated(fetch::Result<crate::model::Address>),
     AddressDelete(i64),
     AddressDeleted(fetch::Result<i64>),
+    OpenModal(i64),
+    SaveToList(),
+    SelectValueChanged(String),
+    CloseModal(),
 }
 
 pub fn update(msg: Msg, model: &mut Model, ctx: &mut Context, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::LoadByAddress(address) => {
             orders.skip().perform_cmd(async move {
-                Msg::AddresssFetched(crate::request::address::list_by_address(address).await)
+                Msg::AddressFetched(crate::request::address::list_by_address(address).await)
             });
         }
         Msg::LoadByTag(tag) => {
             orders.skip().perform_cmd(async move {
-                Msg::AddresssFetched(crate::request::address::list_by_tag(tag).await)
+                Msg::AddressFetched(crate::request::address::list_by_tag(tag).await)
             });
         }
         Msg::LoadByService(service) => {
             orders.skip().perform_cmd(async move {
-                Msg::AddresssFetched(crate::request::address::list_by_service(service).await)
+                Msg::AddressFetched(crate::request::address::list_by_service(service).await)
             });
         }
-        Msg::AddresssFetched(Ok(addresses)) => {
+        Msg::AddressFetched(Ok(addresses)) => {
+            let list_map: HashMap<Uuid, StoredList> = LocalStorage::get(LOCAL_STORAGE_KEY).unwrap_or_default();
+            ctx.lists = list_map;
+
             model.addresses = addresses;
         }
         Msg::AddressNew => {
@@ -107,9 +120,45 @@ pub fn update(msg: Msg, model: &mut Model, ctx: &mut Context, orders: &mut impl 
         Msg::AddressDeleted(Err(_)) => {
             log("Error");
         }
+
+        Msg::OpenModal(id) => {
+            model.modal_address = model.addresses.iter().find(|&a| a.id == Some(id)).cloned();
+            model.show_modal = true;
+        }
+
+        Msg::CloseModal() => {
+            model.show_modal = false;
+            model.modal_address = None;
+            model.selected_list_id = None;
+        }
+
+        Msg::SelectValueChanged(event) => {
+            model.selected_list_id = match event.parse::<Uuid>() {
+                Ok(uuid) => Some(uuid),
+                Err(_) => None
+            };
+        }
+
+
+        Msg::SaveToList() => {
+            if model.selected_list_id.is_none() || model.modal_address.is_none() {
+                log("Tried to call save with None!");
+            }
+
+            if ctx.lists.get(&model.selected_list_id.unwrap()).unwrap().addresses.contains(&model.modal_address.clone().unwrap().id.unwrap()) {
+                orders.send_msg(Msg::CloseModal());
+                return;
+            }
+            ctx.lists.get_mut(&model.selected_list_id.unwrap()).unwrap().addresses.push(model.modal_address.clone().unwrap().id.unwrap());
+            
+            LocalStorage::insert(LOCAL_STORAGE_KEY, &ctx.lists);
+            orders.send_msg(Msg::CloseModal());
+        }
+
         _ => {
             log(msg);
         }
+
     }
 }
 
@@ -130,6 +179,74 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 ev(Ev::Click, |_| Msg::AddressNew),
             ],
         ],
+        if model.show_modal {
+            div![
+                C!["modal show"],
+                attrs!{
+                    At::Id => "listModal",
+                    At::from("data-bs-keyboard") => "false",
+                    At::from("tabindex") => "-1",
+                },
+                div![
+                    C!["modal-dialog"],
+                    div![
+                        C!["modal-content"],
+                        div![
+                            C!["modal-header"],
+                            attrs!{
+                                At::Id => "listModalLabel",
+                            },
+                            h1![
+                                C!["modal-title fs-5"],
+                                "Add to List"
+                            ],
+                        ],
+                    div![
+                        C!["modal-body"],
+                        select![
+                            C!["form-select"],
+                            input_ev(Ev::Input, Msg::SelectValueChanged),
+                            option![
+                                style!{
+                                    St::Display => "none"
+                                },
+                                attrs!(
+                                    At::Value => "",
+                                    At::Selected => true,
+                                    At::Disabled => true,
+                                )
+                            ],
+                            ctx.lists
+                                .values()
+                                .map(|list| 
+                                     option![
+                                     attrs!(
+                                         At::Value => list.id.to_string(),
+                                         ),
+                                     list.id.to_string()
+                                     
+                                ])
+                        ]
+                    ],
+                    div![
+                        C!["modal-footer"],
+                        button![
+                            C!["btn btn-primary"],
+                            ev(Ev::Click, |_| Msg::SaveToList()),
+                            "Save"
+                        ],
+                        button![
+                            C!["btn btn-secondary"],
+                            ev(Ev::Click, |_| Msg::CloseModal()),
+                            "Close"
+                        ],
+                    ],
+                    ]
+                ]
+            ]
+        } else {
+            div![]
+        },
         if let Some(address) = &model.new_address {
             div![
                 C!["border-bottom"],            
@@ -207,10 +324,24 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                                 ]
                             ],
                             td![
-                                C!["btn", "btn-primary"],
-                                ev(Ev::Click, move |_| Msg::AddressDelete(id)),
-                                "DELETE"
-                            ]
+                                ul![
+                                    C!["list-group"],
+                                    button![
+                                        C!["list-group-item list-group-item-action"],
+                                        ev(Ev::Click, move |_| Msg::AddressDelete(id)),
+                                        "DELETE"
+                                    ],
+                                    button![
+                                        C!["list-group-item list-group-item-action"],
+                                        attrs!{
+                                            At::from("data-bs-toggle") => "modal",
+                                            At::from("data-bs-target") => "#listModal",
+                                        },
+                                        ev(Ev::Click, move |_| Msg::OpenModal(id)),
+                                        "Add to List"
+                                    ],
+                                ]
+                            ],
                         ]
                     })
                     .collect::<Vec<Node<Msg>>>()]
