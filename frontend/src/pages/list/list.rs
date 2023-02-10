@@ -1,4 +1,4 @@
-use crate::{model::StoredList, Context, Urls, pages::pagination, LOCAL_STORAGE_KEY};
+use crate::{Context, Urls, pages::pagination, LOCAL_STORAGE_KEY};
 use seed::{prelude::*, *};
 use uuid::Uuid;
 
@@ -6,8 +6,8 @@ use uuid::Uuid;
 pub struct Model {
     filter: String,
     pagination: crate::Pagination,
-    lists: Vec<crate::model::StoredList>,
-    new_list: Option<StoredList>,
+    lists: Vec<shared::StoredList>,
+    new_list: Option<shared::StoredList>,
 }
 
 #[derive(Debug)]
@@ -19,7 +19,7 @@ pub enum Msg {
     StoredListNewAddressAdd(String),
     StoredListNewAddressDel(String),
     StoredListCreate,
-    StoredListCreated(fetch::Result<crate::model::StoredList>),
+    StoredListCreated(fetch::Result<shared::StoredList>),
     StoredListDelete(Uuid),
     StoredListDeleted(fetch::Result<i32>),
 }
@@ -43,7 +43,7 @@ pub fn update(
         Msg::StoredListNew => {
             if model.new_list.is_none() {
                 log("Creating list");
-                model.new_list = Some(StoredList{id: Uuid::new_v4(), description: String::new(), addresses: Vec::new()});
+                model.new_list = Some(shared::StoredList{id: Uuid::new_v4(), description: String::new(), addresses: Vec::new()});
             } else {
                 model.new_list = None;
             }
@@ -98,10 +98,11 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                                         |l| 
                                             Uuid::to_string(&l.id).to_lowercase().contains(&model.filter) || l.description.to_lowercase().contains(&model.filter));
 
-    let size = filtered_lists.clone().count();
-
-    let lists: Vec<StoredList> = filtered_lists.skip(model.pagination.start).take(ctx.page_size)
-                        .map(|c| c.clone()).collect();
+    let count =  filtered_lists.clone().count();
+    let lists: Vec<shared::StoredList> = filtered_lists.skip(model.pagination.start).take(ctx.page_size)
+                        .map(move |c| {
+                            c.clone()
+                        }).collect();    
     
     div![
         C!["container"],
@@ -195,7 +196,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                     .collect::<Vec<Node<Msg>>>()]                    
             ],            
         ],
-        IF!(size > 0 => pagination::<Msg>(&model.pagination, size, ctx.page_size.clone(), Msg::Pagination))
+        IF!(count > 0 => pagination::<Msg>(&model.pagination, count, ctx.page_size, Msg::Pagination))
     ]
 }
 

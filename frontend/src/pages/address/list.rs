@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{model::{Address, StoredList}, Context, Urls, LOCAL_STORAGE_KEY};
-use seed::{prelude::{*, web_sys::Event}, *};
+use crate::{Context, Urls, LOCAL_STORAGE_KEY};
+use seed::{prelude::{*}, *};
 use uuid::Uuid;
+use shared::{Address, StoredList};
 
 #[derive(Debug)]
 pub enum PageType {
@@ -29,11 +30,11 @@ pub enum Msg {
     LoadByTag(i32),
     LoadByService(i32),
     LoadByIds(Vec<i64>),
-    AddressFetched(fetch::Result<Vec<crate::model::Address>>),
+    AddressFetched(fetch::Result<Vec<shared::Address>>),
     AddressNew,
     AddressNewTitleChanged(String),
     AddressCreate,
-    AddressCreated(fetch::Result<crate::model::Address>),
+    AddressCreated(fetch::Result<shared::Address>),
     AddressDelete(i64),
     AddressDeleted(fetch::Result<i64>),
     OpenModal(i64),

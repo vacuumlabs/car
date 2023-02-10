@@ -1,18 +1,18 @@
-use crate::{model::Service, Context};
+use crate::Context;
 use seed::{prelude::*, *};
 
 #[derive(Default, Debug)]
 pub struct Model {
     pub slug: String,
     pub edit: bool,
-    pub service: Option<Service>,
+    pub service: Option<shared::Service>,
     pub saved: Option<bool>,
 }
 
 #[derive(Debug)]
 pub enum Msg {
     Load,
-    ServiceFetched(fetch::Result<crate::model::Service>),
+    ServiceFetched(fetch::Result<shared::Service>),
     EditToggle,
     ServiceTitleChanged(String),
 

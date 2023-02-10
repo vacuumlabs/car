@@ -1,5 +1,4 @@
 use crate::entity::service;
-use crate::server::Service;
 use rweb::*;
 use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait, ModelTrait};
 
@@ -7,8 +6,8 @@ use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait, Mo
 #[openapi(description = "Read address record")]
 pub async fn create(
     #[data] db: DatabaseConnection,
-    body: Json<Service>,
-) -> Result<Json<Service>, Rejection> {
+    body: Json<shared::Service>,
+) -> Result<Json<shared::Service>, Rejection> {
     let body = body.into_inner();
 
     let value = service::ActiveModel {
@@ -19,8 +18,8 @@ pub async fn create(
     .await;
 
     match value {
-        Ok(new) => Ok(Service {
-            id: new.id,
+        Ok(new) => Ok(shared::Service {
+            id: Some(new.id),
             title: new.title,
         }
         .into()),
@@ -30,10 +29,13 @@ pub async fn create(
 
 #[get("/api/service/{id}")] // Create address endpoint
 #[openapi(description = "Read address record")]
-pub async fn detail(#[data] db: DatabaseConnection, id: i32) -> Result<Json<Service>, Rejection> {
+pub async fn detail(
+    #[data] db: DatabaseConnection,
+    id: i32,
+) -> Result<Json<shared::Service>, Rejection> {
     match service::Entity::find_by_id(id).one(&db).await {
-        Ok(Some(value)) => Ok(Service {
-            id: value.id,
+        Ok(Some(value)) => Ok(shared::Service {
+            id: Some(value.id),
             title: value.title.clone(),
         }
         .into()),
@@ -43,15 +45,15 @@ pub async fn detail(#[data] db: DatabaseConnection, id: i32) -> Result<Json<Serv
 
 #[get("/api/service/")] // Create address endpoint
 #[openapi(description = "Read address record")]
-pub async fn list(#[data] db: DatabaseConnection) -> Result<Json<Vec<Service>>, Rejection> {
+pub async fn list(#[data] db: DatabaseConnection) -> Result<Json<Vec<shared::Service>>, Rejection> {
     match service::Entity::find().all(&db).await {
         Ok(service_list) => Ok(service_list
             .iter()
-            .map(|s| Service {
-                id: s.id,
+            .map(|s| shared::Service {
+                id: Some(s.id),
                 title: s.title.clone(),
             })
-            .collect::<Vec<Service>>()
+            .collect::<Vec<shared::Service>>()
             .into()),
         _ => Err(reject::not_found()),
     }
@@ -61,9 +63,9 @@ pub async fn list(#[data] db: DatabaseConnection) -> Result<Json<Vec<Service>>, 
 #[openapi(description = "Read address record")]
 pub async fn update(
     #[data] db: DatabaseConnection,
-    body: Json<Service>,
+    body: Json<shared::Service>,
     id: i32,
-) -> Result<Json<Service>, Rejection> {
+) -> Result<Json<shared::Service>, Rejection> {
     let body = body.into_inner();
 
     match service::Entity::find_by_id(id).one(&db).await {
@@ -73,9 +75,9 @@ pub async fn update(
             value.title = ActiveValue::Set(body.title.clone());
             let value: service::Model = value.update(&db).await.unwrap();
 
-            Ok(Service {
+            Ok(shared::Service {
                 title: value.title.clone(),
-                id: value.id,
+                id: Some(value.id),
             }
             .into())
         }

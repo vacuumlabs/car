@@ -1,7 +1,9 @@
 FROM rust:1.65
 
+RUN rustup target add wasm32-unknown-unknown
+RUN cargo install trunk
 
-COPY ./car .
-COPY ./migration .
+WORKDIR /app
 
-CMD ["sh", "-c", "./migration up && ./car"]
+COPY ./target/release/car ./target/release/migration ./dist ./
+CMD ./migration up && car

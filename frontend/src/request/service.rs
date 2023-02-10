@@ -1,7 +1,6 @@
-use crate::model;
 use seed::{prelude::*, *};
 
-pub async fn create(service: model::Service) -> fetch::Result<model::Service> {
+pub async fn create(service: shared::Service) -> fetch::Result<shared::Service> {
     Request::new("/api/service/")
         .method(Method::Post)
         .json(&service)?
@@ -12,7 +11,7 @@ pub async fn create(service: model::Service) -> fetch::Result<model::Service> {
         .await
 }
 
-pub async fn list() -> fetch::Result<Vec<model::Service>> {
+pub async fn list() -> fetch::Result<Vec<shared::Service>> {
     Request::new("/api/service")
         .method(Method::Get)
         .fetch()
@@ -22,7 +21,7 @@ pub async fn list() -> fetch::Result<Vec<model::Service>> {
         .await
 }
 
-pub async fn detail(id: i32) -> fetch::Result<model::Service> {
+pub async fn detail(id: i32) -> fetch::Result<shared::Service> {
     Request::new(format!("/api/service/{}", id))
         .method(Method::Get)
         .fetch()
@@ -32,7 +31,7 @@ pub async fn detail(id: i32) -> fetch::Result<model::Service> {
         .await
 }
 
-pub async fn save(service: model::Service) -> fetch::Result<model::Service> {
+pub async fn save(service: shared::Service) -> fetch::Result<shared::Service> {
     Request::new(format!("/api/service/{}", service.id.unwrap()))
         .method(Method::Post)
         .json(&service)?

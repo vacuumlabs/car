@@ -1,0 +1,12 @@
+[[proxy]]
+backend = "http://localhost:3030/docs"
+
+[[proxy]]
+backend = "http://localhost:3030/openapi.json"
+
+[[proxy]]
+backend = "http://localhost:3030/api/"
+
+[build]
+target = "frontend/index.html"
+dist = "dist"

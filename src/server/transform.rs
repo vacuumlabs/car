@@ -1,4 +1,3 @@
-use crate::server::{Address, AddressRef, AddressRefHuman, PrivAddress};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -17,7 +16,7 @@ fn map_address_query(address_list: &BTreeSet<i64>) -> Statement {
 pub async fn map_addresses(
     db: &DatabaseConnection,
     address_list: &mut BTreeSet<i64>,
-    address_map: &mut BTreeMap<i64, PrivAddress>,
+    address_map: &mut BTreeMap<i64, shared::PrivAddress>,
 ) {
     let statement = map_address_query(address_list);
 
@@ -27,7 +26,7 @@ pub async fn map_addresses(
             let hash = row.try_get("", "hash").unwrap();
             address_map.insert(
                 id,
-                PrivAddress {
+                shared::PrivAddress {
                     title: row.try_get("", "title").unwrap_or(String::new()),
                     chain: row.try_get("", "chain").unwrap(),
                     hash: hash,
@@ -42,7 +41,7 @@ pub async fn map_addresses(
 pub async fn map_addresses_extended(
     db: &DatabaseConnection,
     address_list: &mut BTreeSet<i64>,
-    address_map: &mut BTreeMap<i64, PrivAddress>,
+    address_map: &mut BTreeMap<i64, shared::PrivAddress>,
     tag_list: &mut BTreeSet<i32>,
     service_list: &mut BTreeSet<i32>,
 ) {
@@ -65,7 +64,7 @@ pub async fn map_addresses_extended(
             let hash = row.try_get("", "hash").unwrap();
             address_map.insert(
                 id,
-                PrivAddress {
+                shared::PrivAddress {
                     title: row.try_get("", "title").unwrap_or(hex::encode(&hash)),
                     chain: row.try_get("", "chain").unwrap(),
                     hash: hash,
@@ -130,16 +129,16 @@ pub async fn map_services(
 }
 
 pub fn address_ref_human(
-    address_map: &BTreeMap<i64, PrivAddress>,
+    address_map: &BTreeMap<i64, shared::PrivAddress>,
     tag_map: &BTreeMap<i32, String>,
     service_map: &BTreeMap<i32, String>,
     addresses: BTreeMap<i64, i32>,
-) -> Vec<AddressRefHuman> {
-    let mut result: Vec<AddressRefHuman> = addresses
+) -> Vec<shared::AddressRefHuman> {
+    let mut result: Vec<shared::AddressRefHuman> = addresses
         .iter()
         .map(|(address_id, address_count)| {
             if let Some(address) = address_map.get(address_id) {
-                return AddressRefHuman {
+                return shared::AddressRefHuman {
                     id: address_id.clone(),
                     hex: hex::encode(&address.hash),
                     human: address.title.clone(),
@@ -156,7 +155,7 @@ pub fn address_ref_human(
                         .collect(),
                 };
             }
-            AddressRefHuman::default()
+            shared::AddressRefHuman::default()
         })
         .collect();
     result.sort_by(|a, b| b.quantity.cmp(&a.quantity));
@@ -164,14 +163,14 @@ pub fn address_ref_human(
 }
 
 pub fn address_ref(
-    address_map: &BTreeMap<i64, PrivAddress>,
+    address_map: &BTreeMap<i64, shared::PrivAddress>,
     addresses: BTreeMap<i64, i32>,
-) -> Vec<AddressRef> {
+) -> Vec<shared::AddressRef> {
     addresses
         .iter()
         .map(|(address_id, address_count)| {
             if let Some(address) = address_map.get(address_id) {
-                return AddressRef {
+                return shared::AddressRef {
                     id: address_id.clone(),
                     hex: hex::encode(&address.hash),
                     human: address.title.clone(),
@@ -180,7 +179,7 @@ pub fn address_ref(
                     services: address.services.clone(),
                 };
             }
-            AddressRef::default()
+            shared::AddressRef::default()
         })
         .collect()
 }

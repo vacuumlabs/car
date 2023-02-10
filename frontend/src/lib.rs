@@ -5,14 +5,9 @@ use seed::{
     *,
 };
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+use shared;
 use std::collections::HashMap;
-use std::{
-    cell::{Cell, RefCell},
-    rc::Rc,
-};
-
-mod model;
+use uuid::Uuid;
 mod pages;
 mod request;
 
@@ -30,10 +25,10 @@ const ANALYSIS: &str = "analysis";
 pub struct Context {
     pub base_url: Url,
     pub page_size: usize,
-    pub chains: HashMap<i32, model::Chain>,
-    pub tags: HashMap<i32, model::Tag>,
-    pub services: HashMap<i32, model::Service>,
-    pub lists: HashMap<Uuid, model::StoredList>,
+    pub chains: HashMap<i32, shared::Chain>,
+    pub tags: HashMap<i32, shared::Tag>,
+    pub services: HashMap<i32, shared::Service>,
+    pub lists: HashMap<Uuid, shared::StoredList>,
 }
 
 impl Default for Context {
@@ -44,7 +39,7 @@ impl Default for Context {
             chains: HashMap::new(),
             tags: HashMap::new(),
             services: HashMap::new(),
-            lists: LocalStorage::get(LOCAL_STORAGE_KEY).unwrap_or_default()
+            lists: LocalStorage::get(LOCAL_STORAGE_KEY).unwrap_or_default(),
         }
     }
 }
@@ -155,9 +150,9 @@ pub enum Msg {
     AddressChanged(String),
     AddressGo,
     ExternalAddress(String),
-    ChainsFetched(fetch::Result<Vec<model::Chain>>),
-    TagsFetched(fetch::Result<Vec<model::Tag>>),
-    ServicesFetched(fetch::Result<Vec<model::Service>>),
+    ChainsFetched(fetch::Result<Vec<shared::Chain>>),
+    TagsFetched(fetch::Result<Vec<shared::Tag>>),
+    ServicesFetched(fetch::Result<Vec<shared::Service>>),
 
     LoadContext,
     Chain(pages::chain::Msg),

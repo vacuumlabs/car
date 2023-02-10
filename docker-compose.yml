@@ -6,11 +6,31 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=addresses
+      - POSTGRES_DB=car
     ports:
-      - '5432:5432'
-    volumes: 
+      - 2345:5432
+    volumes:
       - db:/var/lib/postgresql/data
+  adminer:
+    image: adminer:4
+    ports:
+      - 4004:8080
+  car:
+    build:
+      dockerfile: ./Dockerfile.local
+    ports:
+      - 3030:3030
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db/car
+    volumes:
+      - ./Cargo.toml:/app/Cargo.toml
+      - ./migration:/app/migration
+      - ./frontend:/app/frontend
+      - ./src:/app/src
+      - target:/app/target
+    command: 'sh -c "cargo run -p migration -- up && trunk build --release ./frontend/index.html && cargo run --release"'
 volumes:
   db:
+    driver: local
+  target:
     driver: local

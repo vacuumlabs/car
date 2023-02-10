@@ -29,6 +29,7 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Chain::Title).string().not_null())
+                    .col(ColumnDef::new(Chain::Params).json().not_null())
                     .to_owned(),
             )
             .await?;
@@ -288,6 +289,7 @@ enum Chain {
     Table,
     Id,
     Title,
+    Params,
 }
 
 #[derive(Iden)]

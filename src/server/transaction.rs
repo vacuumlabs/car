@@ -1,5 +1,4 @@
 use crate::entity::transaction;
-use crate::server::Transaction;
 use rweb::*;
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, Statement};
 
@@ -7,8 +6,8 @@ use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, State
 #[openapi(description = "Read address record")]
 pub async fn create(
     #[data] db: DatabaseConnection,
-    body: Json<Transaction>,
-) -> Result<Json<Transaction>, Rejection> {
+    body: Json<shared::Transaction>,
+) -> Result<Json<shared::Transaction>, Rejection> {
     Ok(body.into())
 }
 
@@ -17,8 +16,8 @@ pub async fn create(
 pub async fn detail(
     #[data] db: DatabaseConnection,
     id: String,
-) -> Result<Json<Transaction>, Rejection> {
-    Ok(Transaction {
+) -> Result<Json<shared::Transaction>, Rejection> {
+    Ok(shared::Transaction {
         id: Some(1),
         chain: 1,
         amount: 0,
@@ -33,10 +32,10 @@ pub async fn detail(
 #[openapi(description = "Read address record")]
 pub async fn update(
     #[data] db: DatabaseConnection,
-    body: Json<Transaction>,
+    body: Json<shared::Transaction>,
     id: String,
-) -> Result<Json<Transaction>, Rejection> {
-    Ok(Transaction {
+) -> Result<Json<shared::Transaction>, Rejection> {
+    Ok(shared::Transaction {
         id: Some(1),
         chain: 1,
         amount: 0,
@@ -52,8 +51,8 @@ pub async fn update(
 pub async fn delete(
     #[data] db: DatabaseConnection,
     id: String,
-) -> Result<Json<Transaction>, Rejection> {
-    Ok(Transaction {
+) -> Result<Json<shared::Transaction>, Rejection> {
+    Ok(shared::Transaction {
         id: Some(1),
         chain: 1,
         amount: 0,

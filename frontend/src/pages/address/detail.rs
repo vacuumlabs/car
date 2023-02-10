@@ -1,4 +1,4 @@
-use crate::{model::Address, Context};
+use crate::Context;
 use seed::{prelude::*, *};
 
 #[derive(Default, Debug)]
@@ -7,14 +7,14 @@ pub struct Model {
     pub edit: bool,
     pub filter_tag: String,
     pub filter_service: String,
-    pub address: Option<Address>,
+    pub address: Option<shared::Address>,
     pub saved: Option<bool>,
 }
 
 #[derive(Debug)]
 pub enum Msg {
     Load,
-    AddressFetched(fetch::Result<crate::model::Address>),
+    AddressFetched(fetch::Result<shared::Address>),
     TagFilterChanged(String),
     ServiceFilterChanged(String),
     AddressTitleChanged(String),

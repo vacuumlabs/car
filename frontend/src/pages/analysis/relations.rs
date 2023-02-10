@@ -1,8 +1,8 @@
 use crate::{
-    model::{AddressRef, AddressRelation},
     pages::pagination,
     Context, Pagination, Urls,
 };
+use     shared::{AddressRef, AddressRelation};
 use seed::{prelude::*, *};
 use std::collections::HashMap;
 use std::iter::FromIterator;

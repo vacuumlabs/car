@@ -1,15 +1,20 @@
 [package]
 name = "frontend"
-version = "0.1.0"
-authors = ["Martin Miksanik <martin.miksanik@vacuumlabs.com>"]
-edition = "2018"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-seed = "0.9.2"
-serde = "1.0.137"
-uuid = { version = "1.1.2", features = ["serde", "v4"] }
-indexmap = { version = "1.9.0", features = ["serde-1"] }
 enclose = "1.1.8"
+indexmap = { version = "1.9.0", features = ["serde-1"] }
+
+seed = "0.9.2"
+serde = { workspace = true }
+shared = { path = "../shared" }
+uuid = { workspace = true }
+
+
+

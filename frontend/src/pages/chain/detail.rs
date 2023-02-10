@@ -1,18 +1,18 @@
-use crate::{model::Chain, Context};
+use crate::Context;
 use seed::{prelude::*, *};
 
 #[derive(Default, Debug)]
 pub struct Model {
     pub slug: String,
     pub edit: bool,
-    pub chain: Option<Chain>,
+    pub chain: Option<shared::Chain>,
     pub saved: Option<bool>,
 }
 
 #[derive(Debug)]
 pub enum Msg {
     Load,
-    ChainFetched(fetch::Result<crate::model::Chain>),
+    ChainFetched(fetch::Result<shared::Chain>),
     EditToggle,
     ChainTitleChanged(String),
 
@@ -68,7 +68,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                     C!["panel-heading"],
                     div![
                         C!["row"],
-                        style!{
+                        style! {
                             St::Display => "flex",
                             St::AlignItems => "center",
                         },
@@ -76,7 +76,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                             C!["col-xs-11"],
                             h3![
                                 C!["heading-title"],
-                                style!{
+                                style! {
                                     // Bootstrap has a default margin on headers,
                                     // removed to align with the button
                                     St::MarginTop => "0px",
@@ -94,7 +94,6 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                             ],
                         ]
                     ],
-
                 ],
                 div![
                     C!["panel-body"],
@@ -147,14 +146,10 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                             ]
                         ]
                     }
-
                 ]
             ]
         ]
     } else {
-        h3![
-            C!["text-center"],
-            "Chain ID not found",
-        ]
+        h3![C!["text-center"], "Chain ID not found",]
     }
 }

@@ -1,11 +1,11 @@
-use crate::{model::Service, Context, Urls, pages::pagination};
+use crate::{Context, Urls, pages::pagination};
 use seed::{prelude::*, *};
 
 #[derive(Default, Debug)]
 pub struct Model {
     filter: String,
     pagination: crate::Pagination,
-    new_service: Option<Service>,
+    new_service: Option<shared::Service>,
 }
 
 #[derive(Debug)]
@@ -15,7 +15,7 @@ pub enum Msg {
     ServiceNew,
     ServiceNewTitleChanged(String),
     ServiceCreate,
-    ServiceCreated(fetch::Result<crate::model::Service>),
+    ServiceCreated(fetch::Result<shared::Service>),
     ServiceDelete(i32),
     ServiceDeleted(fetch::Result<i32>),
 }
@@ -38,7 +38,7 @@ pub fn update(
         }
         Msg::ServiceNew => {
             if model.new_service.is_none() {
-                model.new_service = Some(Service{title: String::new(), id: None});
+                model.new_service = Some(shared::Service{title: String::new(), id: None});
 
             } else {
                 model.new_service = None;
@@ -102,7 +102,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
 
     let size = filtered_services.clone().count();
 
-    let services: Vec<Service> = filtered_services.skip(model.pagination.start).take(ctx.page_size)
+    let services: Vec<shared::Service> = filtered_services.skip(model.pagination.start).take(ctx.page_size)
                         .map(|c| c.clone()).collect();
     
     div![

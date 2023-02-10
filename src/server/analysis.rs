@@ -1,5 +1,5 @@
 use crate::entity::address;
-use crate::server::{transform, AddressRef, AddressRelation, AddressRelationHuman, PrivAddress};
+use crate::server::transform;
 use rweb::*;
 use sea_orm::{
     ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, QueryResult, Statement,
@@ -62,7 +62,7 @@ async fn process_query(
 pub async fn relation(
     #[data] db: DatabaseConnection,
     address: String,
-) -> Result<Json<AddressRelation>, Rejection> {
+) -> Result<Json<shared::AddressRelation>, Rejection> {
     if let Ok(address_hex) = hex::decode(&address) {
         // Get address ID
         let statement = Statement::from_sql_and_values(
@@ -73,7 +73,7 @@ pub async fn relation(
         return match db.query_one(statement).await {
             Ok(Some(result)) => {
                 let mut address_list: BTreeSet<i64> = BTreeSet::new();
-                let mut address_map: BTreeMap<i64, PrivAddress> = BTreeMap::new();
+                let mut address_map: BTreeMap<i64, shared::PrivAddress> = BTreeMap::new();
                 let mut inputs: BTreeMap<i64, i32> = BTreeMap::new();
                 let mut outputs: BTreeMap<i64, i32> = BTreeMap::new();
                 let mut mixed_in: BTreeMap<i64, i32> = BTreeMap::new();
@@ -96,7 +96,7 @@ pub async fn relation(
                 transform::map_addresses(&db, &mut address_list, &mut address_map).await;
 
                 let address_detail = address_map.get(&address_id).unwrap();
-                Ok(AddressRelation {
+                Ok(shared::AddressRelation {
                     id: address_id.clone(),
                     hex: address.clone(),
                     human: address_detail.title.clone(),
@@ -120,7 +120,7 @@ pub async fn relation(
 pub async fn relation_human(
     #[data] db: DatabaseConnection,
     address: String,
-) -> Result<Json<AddressRelationHuman>, Rejection> {
+) -> Result<Json<shared::AddressRelationHuman>, Rejection> {
     if let Ok(address_hex) = hex::decode(&address) {
         // Get address ID
         let statement = Statement::from_sql_and_values(
@@ -131,7 +131,7 @@ pub async fn relation_human(
         return match db.query_one(statement).await {
             Ok(Some(result)) => {
                 let mut address_list: BTreeSet<i64> = BTreeSet::new();
-                let mut address_map: BTreeMap<i64, PrivAddress> = BTreeMap::new();
+                let mut address_map: BTreeMap<i64, shared::PrivAddress> = BTreeMap::new();
                 let mut tag_list: BTreeSet<i32> = BTreeSet::new();
                 let mut tag_map: BTreeMap<i32, String> = BTreeMap::new();
 
@@ -170,7 +170,7 @@ pub async fn relation_human(
 
                 // Transfer to json output
                 let address_detail = address_map.get(&address_id).unwrap();
-                Ok(AddressRelationHuman {
+                Ok(shared::AddressRelationHuman {
                     id: address_id.clone(),
                     hex: address.clone(),
                     human: address_detail.title.clone(),

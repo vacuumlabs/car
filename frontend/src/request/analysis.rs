@@ -1,7 +1,6 @@
-use crate::model;
 use seed::{prelude::*, *};
 
-pub async fn relations(address: String) -> fetch::Result<model::AddressRelation> {
+pub async fn relations(address: String) -> fetch::Result<shared::AddressRelation> {
     Request::new(format!("/api/analysis/address/{}", address))
         .method(Method::Get)
         .fetch()

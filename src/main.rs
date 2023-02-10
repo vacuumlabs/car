@@ -1,10 +1,18 @@
+#![recursion_limit = "256"]
+
+use feed::Feed;
 use pallas_addresses::Address;
 use sea_orm::{prelude::*, ConnectOptions, Database};
-use std::{collections::BTreeSet, net::SocketAddr, time::Duration};
+use std::{
+    collections::{BTreeSet, HashMap},
+    net::SocketAddr,
+    time::Duration,
+};
 use tracing_subscriber::prelude::*;
 
 pub mod common;
 pub mod entity;
+pub mod feed;
 pub mod server;
 pub mod service;
 pub mod tag;
@@ -23,6 +31,13 @@ async fn main() -> Result<(), String> {
         .init();
 
     let mut opt = ConnectOptions::new(String::from(std::env::var("DATABASE_URL").unwrap()));
+    let address: SocketAddr = std::env::var("ADDRESS")
+        .unwrap_or(String::from("0.0.0.0:3030"))
+        .parse()
+        .unwrap();
+    let frontend_path = String::from(std::env::var("STATIC").unwrap_or(String::from("./dist")));
+
+    //
     opt.max_connections(2)
         .min_connections(1)
         .connect_timeout(Duration::from_secs(8))
@@ -100,7 +115,46 @@ async fn main() -> Result<(), String> {
     let intersection = &set4 & &set3;
     tracing::debug!("addresses: {:?}", intersection);
     */
-    let bind: SocketAddr = SocketAddr::from(([0, 0, 0, 0], 3030));
-    server::run(&bind, &db).await;
+    //let bind: SocketAddr = ;
+
+    let mut feed_channel: HashMap<i32, tokio::sync::mpsc::Sender<feed::FeedCommand>> =
+        HashMap::new();
+
+    if let Ok(chains) = entity::chain::Entity::find().all(&db).await {
+        for chain in chains {
+            let params: shared::ChainParam = serde_json::from_value(chain.params).unwrap();
+            let (sender, receiver) = tokio::sync::mpsc::channel::<feed::FeedCommand>(16);
+            let db = db.clone();
+            match params {
+                shared::ChainParam::ArbiScan(anyscan) => {
+                    feed_channel.insert(chain.id.clone(), sender);
+                    tokio::task::spawn(async move {
+                        anyscan.run(db, receiver, chain.id).await;
+                    });
+                }
+                shared::ChainParam::EtherScan(anyscan) => {
+                    feed_channel.insert(chain.id.clone(), sender);
+                    tokio::task::spawn(async move {
+                        anyscan.run(db, receiver, chain.id).await;
+                    });
+                }
+                shared::ChainParam::PolyScan(anyscan) => {
+                    feed_channel.insert(chain.id.clone(), sender);
+                    tokio::task::spawn(async move {
+                        anyscan.run(db, receiver, chain.id).await;
+                    });
+                }
+                shared::ChainParam::None => {}
+            }
+        }
+    }
+
+    tracing::info!(
+        "Serving: {}, static: {}, database: {}",
+        address,
+        frontend_path,
+        "ratata"
+    );
+    server::run(&address, &db, frontend_path).await;
     Ok(())
 }

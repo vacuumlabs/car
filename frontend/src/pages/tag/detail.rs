@@ -1,18 +1,18 @@
-use crate::{model::Tag, Context};
+use crate::Context;
 use seed::{prelude::*, *};
 
 #[derive(Default, Debug)]
 pub struct Model {
     pub slug: String,
     pub edit: bool,
-    pub tag: Option<Tag>,
+    pub tag: Option<shared::Tag>,
     pub saved: Option<bool>,
 }
 
 #[derive(Debug)]
 pub enum Msg {
     Load,
-    TagFetched(fetch::Result<crate::model::Tag>),
+    TagFetched(fetch::Result<shared::Tag>),
     EditToggle,
     TagTitleChanged(String),
 
