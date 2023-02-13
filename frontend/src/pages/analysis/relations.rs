@@ -149,7 +149,7 @@ pub fn view_relation(model: &Model, ctx: &Context, addresses: &Vec<AddressRef>) 
                 span![format!("{}X ", i.quantity), style! {St::Color => "red"}],
                 a![
                     attrs!{At::Href => crate::Urls::new(ctx.base_url.clone()).address().detail(i.id.clone())},
-                    format!("{}...{}", i.hex[0..3].to_string(), i.hex[i.hex.len()-3..].to_string())
+                    format!("{}...{}", i.hex.chars().take(3).collect::<String>(), i.hex.chars().skip(std::cmp::max(i.hex.len(), 3)-3).take(3).collect::<String>())
                 ],
                 div![crate::pages::tag_badge(ctx, &i.tags)],
                 div![crate::pages::service_badge(ctx, &i.services)],

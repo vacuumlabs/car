@@ -53,9 +53,10 @@ pub fn update(
         Msg::ChainCreate => {
             if let Some(chain) = &model.new_chain {
                 let chain = chain.clone();
+                let token = ctx.token.clone();
                 orders.perform_cmd(
                     async move {
-                        Msg::ChainCreated(crate::request::chain::create(chain.clone()).await)
+                        Msg::ChainCreated(crate::request::chain::create(chain.clone(), token).await)
                     }
                 );
             }
@@ -116,7 +117,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
     div![
         C!["container"],
         h2!["Chains"],
-        div![
+        IF!(ctx.edit => div![
             C!["text-right"],
             span![
                 C!["btn", "btn-primary", "right"],
@@ -127,7 +128,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 "Create chain",
                 ev(Ev::Click, |_| Msg::ChainNew),
             ],
-        ],
+        ]),
         if let Some(chain) = &model.new_chain {
             div![
                 C!["panel", "panel-default"],                            
@@ -191,11 +192,12 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                             td![ch.title.clone()],
                             td![
                                 C!["text-right"],
-                                span![
+                                IF!(ctx.edit =>
+                                div![
                                     C!["btn", "btn-primary"],
                                     ev(Ev::Click, move |_| Msg::ChainDelete(id)),
                                     "DELETE"
-                                ],
+                                ]),
                             ],
                         ]
                     })

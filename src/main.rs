@@ -6,8 +6,10 @@ use sea_orm::{prelude::*, ConnectOptions, Database};
 use std::{
     collections::{BTreeSet, HashMap},
     net::SocketAddr,
+    sync::Arc,
     time::Duration,
 };
+use tokio::sync::RwLock;
 use tracing_subscriber::prelude::*;
 
 pub mod common;
@@ -16,6 +18,8 @@ pub mod feed;
 pub mod server;
 pub mod service;
 pub mod tag;
+
+type FeedChannel = Arc<RwLock<HashMap<i32, tokio::sync::mpsc::Sender<feed::FeedCommand>>>>;
 
 #[tokio::main]
 async fn main() -> Result<(), String> {
@@ -36,6 +40,7 @@ async fn main() -> Result<(), String> {
         .parse()
         .unwrap();
     let frontend_path = String::from(std::env::var("STATIC").unwrap_or(String::from("./dist")));
+    let token = String::from(std::env::var("TOKEN").unwrap_or(String::from("token")));
 
     //
     opt.max_connections(2)
@@ -117,35 +122,11 @@ async fn main() -> Result<(), String> {
     */
     //let bind: SocketAddr = ;
 
-    let mut feed_channel: HashMap<i32, tokio::sync::mpsc::Sender<feed::FeedCommand>> =
-        HashMap::new();
+    let mut feed_channel: FeedChannel = Arc::new(RwLock::new(HashMap::new()));
 
     if let Ok(chains) = entity::chain::Entity::find().all(&db).await {
         for chain in chains {
-            let params: shared::ChainParam = serde_json::from_value(chain.params).unwrap();
-            let (sender, receiver) = tokio::sync::mpsc::channel::<feed::FeedCommand>(16);
-            let db = db.clone();
-            match params {
-                shared::ChainParam::ArbiScan(anyscan) => {
-                    feed_channel.insert(chain.id.clone(), sender);
-                    tokio::task::spawn(async move {
-                        anyscan.run(db, receiver, chain.id).await;
-                    });
-                }
-                shared::ChainParam::EtherScan(anyscan) => {
-                    feed_channel.insert(chain.id.clone(), sender);
-                    tokio::task::spawn(async move {
-                        anyscan.run(db, receiver, chain.id).await;
-                    });
-                }
-                shared::ChainParam::PolyScan(anyscan) => {
-                    feed_channel.insert(chain.id.clone(), sender);
-                    tokio::task::spawn(async move {
-                        anyscan.run(db, receiver, chain.id).await;
-                    });
-                }
-                shared::ChainParam::None => {}
-            }
+            start_feeder(db.clone(), feed_channel.clone(), chain).await;
         }
     }
 
@@ -155,6 +136,38 @@ async fn main() -> Result<(), String> {
         frontend_path,
         "ratata"
     );
-    server::run(&address, &db, frontend_path).await;
+    server::run(&address, &db, feed_channel, token, frontend_path).await;
     Ok(())
+}
+
+pub async fn start_feeder(
+    db: DatabaseConnection,
+    feed_channel: FeedChannel,
+    chain: entity::chain::Model,
+) {
+    let (sender, receiver) = tokio::sync::mpsc::channel::<feed::FeedCommand>(16);
+    let db = db.clone();
+    let mut feed_channel = feed_channel.write().await;
+    let params: shared::ChainParam = serde_json::from_value(chain.params).unwrap();
+    match params {
+        shared::ChainParam::ArbiScan(mut anyscan) => {
+            feed_channel.insert(chain.id.clone(), sender);
+            tokio::task::spawn(async move {
+                anyscan.run(db, receiver, chain.id).await;
+            });
+        }
+        shared::ChainParam::EtherScan(mut anyscan) => {
+            feed_channel.insert(chain.id.clone(), sender);
+            tokio::task::spawn(async move {
+                anyscan.run(db, receiver, chain.id).await;
+            });
+        }
+        shared::ChainParam::PolyScan(mut anyscan) => {
+            feed_channel.insert(chain.id.clone(), sender);
+            tokio::task::spawn(async move {
+                anyscan.run(db, receiver, chain.id).await;
+            });
+        }
+        shared::ChainParam::None => {}
+    }
 }

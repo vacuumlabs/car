@@ -9,8 +9,15 @@ use sea_orm::{
 #[openapi(description = "Create address record")]
 pub async fn create(
     #[data] db: DatabaseConnection,
+    #[data] token: String,
+    #[header = "authorization"] authorization: String,
+
     body: Json<shared::Address>,
 ) -> Result<Json<shared::Address>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     let body = body.into_inner();
 
     let value = address::ActiveModel {
@@ -73,6 +80,38 @@ pub async fn detail(
         }
         _ => Err(reject::not_found()),
     }
+}
+
+#[post("/api/address/{id}/process")]
+#[openapi(description = "Read address record")]
+pub async fn process(
+    #[data] feed_channel: crate::FeedChannel,
+    #[data] db: DatabaseConnection,
+    #[data] token: String,
+    #[header = "authorization"] authorization: String,
+    id: i64,
+) -> Result<Json<bool>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
+    if let Ok(Some(address)) = crate::entity::address::Entity::find_by_id(id)
+        .one(&db)
+        .await
+    {
+        let feed_channel = feed_channel.read().await;
+        if let Some(feed) = feed_channel.get(&address.chain) {
+            if let Err(_) = feed
+                .send(crate::feed::FeedCommand::Address(address.id))
+                .await
+            {
+                return Ok(true.into());
+            } else {
+                return Ok(true.into());
+            }
+        };
+    }
+    Ok(false.into())
 }
 
 pub fn address_list_query(list: Vec<address::Model>) -> Vec<shared::Address> {
@@ -211,10 +250,16 @@ pub async fn list_by_transaction(
 #[post("/api/address/{id}")] // Create address endpoint
 #[openapi(description = "Update address record")]
 pub async fn update(
+    #[data] token: String,
     #[data] db: DatabaseConnection,
+    #[header = "authorization"] authorization: String,
     id: i64,
     body: Json<shared::Address>,
 ) -> Result<Json<shared::Address>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     let body = body.into_inner();
 
     match address::Entity::find_by_id(id).one(&db).await {
@@ -243,10 +288,17 @@ pub async fn update(
 #[delete("/api/address/{id}")] // Create address endpoint
 #[openapi(description = "Read address record")]
 pub async fn delete(
+    #[data] token: String,
     #[data] db: DatabaseConnection,
+    #[header = "authorization"] authorization: String,
+
     id: String,
     body: Json<shared::Address>,
 ) -> Result<Json<shared::Address>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     let address = shared::Address {
         id: Some(1),
         title: Some(String::from("test")),

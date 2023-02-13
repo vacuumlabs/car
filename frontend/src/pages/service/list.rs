@@ -108,6 +108,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
     div![
         C!["container"],
         h2!["Services"],
+        IF!(ctx.edit =>
         div![
             C!["text-right"],
             span![
@@ -119,7 +120,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 "Create service",
                 ev(Ev::Click, |_| Msg::ServiceNew),
             ],
-        ],
+        ]),
         if let Some(service) = &model.new_service {
             div![
                 C!["panel", "panel-default"],                            
@@ -184,13 +185,15 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                                     attrs!{At::Href => Urls::new(ctx.base_url.clone()).address().list_by_service(id.clone())}
                                 ]
                             ],
+                            
                             td![
                                 C!["text-right"],                                
-                                span![
+                                IF!(ctx.edit => 
+                                div![
                                     C!["btn", "btn-primary"],
                                     ev(Ev::Click, move |_| Msg::ServiceDelete(id)),
                                     "DELETE"
-                                ]
+                                ])
                             ]
                         ]
                     })

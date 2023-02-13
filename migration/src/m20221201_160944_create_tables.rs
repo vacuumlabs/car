@@ -148,6 +148,17 @@ impl MigrationTrait for Migration {
                         .to_owned(),
                 )
                 .await?;
+            manager
+                .create_index(
+                    Index::create()
+                        .name("address-unique")
+                        .table(Address::Table)
+                        .col(Address::Hash)
+                        .col(Address::Chain)
+                        .unique()
+                        .to_owned(),
+                )
+                .await?;
         }
 
         manager
@@ -222,6 +233,17 @@ impl MigrationTrait for Migration {
                         .table(Transaction::Table)
                         .col(Transaction::To)
                         .index_type(IndexType::Custom(Arc::new(CustomIndexType::Gin)))
+                        .to_owned(),
+                )
+                .await?;
+            manager
+                .create_index(
+                    Index::create()
+                        .name("transaction-unique")
+                        .table(Transaction::Table)
+                        .col(Transaction::Hash)
+                        .col(Transaction::Chain)
+                        .unique()
                         .to_owned(),
                 )
                 .await?;

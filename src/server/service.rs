@@ -6,8 +6,15 @@ use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait, Mo
 #[openapi(description = "Read address record")]
 pub async fn create(
     #[data] db: DatabaseConnection,
+    #[data] token: String,
+    #[header = "authorization"] authorization: String,
+
     body: Json<shared::Service>,
 ) -> Result<Json<shared::Service>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     let body = body.into_inner();
 
     let value = service::ActiveModel {
@@ -62,10 +69,16 @@ pub async fn list(#[data] db: DatabaseConnection) -> Result<Json<Vec<shared::Ser
 #[post("/api/service/{id}")] // Create address endpoint
 #[openapi(description = "Read address record")]
 pub async fn update(
+    #[data] token: String,
     #[data] db: DatabaseConnection,
+    #[header = "authorization"] authorization: String,
     body: Json<shared::Service>,
     id: i32,
 ) -> Result<Json<shared::Service>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     let body = body.into_inner();
 
     match service::Entity::find_by_id(id).one(&db).await {
@@ -87,7 +100,16 @@ pub async fn update(
 
 #[delete("/api/service/{id}")] // Create address endpoint
 #[openapi(description = "Read address record")]
-pub async fn delete(#[data] db: DatabaseConnection, id: i32) -> Result<Json<()>, Rejection> {
+pub async fn delete(
+    #[data] token: String,
+    #[data] db: DatabaseConnection,
+    #[header = "authorization"] authorization: String,
+    id: i32,
+) -> Result<Json<()>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     match service::Entity::find_by_id(id).one(&db).await {
         Ok(Some(value)) => {
             value.delete(&db).await.unwrap();

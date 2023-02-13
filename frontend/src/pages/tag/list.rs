@@ -114,6 +114,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
     div![
         C!["container"],
         h2!["Tags"],
+        IF!(ctx.edit =>
         div![
             C!["text-right"],
             span![
@@ -125,7 +126,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 "Create tag",
                 ev(Ev::Click, |_| Msg::TagNew),
             ],
-        ],
+        ]),
         if let Some(tag) = &model.new_tag {
             div![
                 C!["panel", "panel-default"],                            
@@ -198,11 +199,12 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                             ],
                             td![
                                 C!["text-right"],
+                                IF!(ctx.edit =>
                                 div![
                                     C!["btn", "btn-primary"],
                                     ev(Ev::Click, move |_| Msg::TagDelete(id)),
                                     "DELETE"
-                                ]
+                                ])
                             ]
                         ]
                     })

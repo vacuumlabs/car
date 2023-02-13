@@ -1,6 +1,12 @@
 use async_trait::async_trait;
-use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, Set, Statement};
-use std::collections::BTreeMap;
+use sea_orm::{
+    entity::*, query::*, ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, DeriveColumn,
+    EntityTrait, EnumIter, QueryFilter, QuerySelect, Selector, Set, Statement,
+};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ops::Deref,
+};
 use tokio::sync::mpsc::Receiver;
 
 mod anyscan;
@@ -12,12 +18,12 @@ pub enum FeedCommand {
 }
 
 type AddressList = Vec<Vec<u8>>;
-type TransactionList = Vec<(Vec<u8>, Option<i64>, Vec<i64>, Vec<i64>)>;
+type TransactionList = Vec<(Vec<u8>, Option<u128>, Vec<Vec<u8>>, Vec<Vec<u8>>)>;
 
 #[async_trait]
 pub trait Feed {
     async fn run(
-        &self,
+        &mut self,
         db: DatabaseConnection,
         mut receiver: Receiver<FeedCommand>,
         chain_id: i32,
@@ -31,14 +37,18 @@ pub trait Feed {
                 .one(&db)
                 .await
             {
-                if let Some(chain) = result {
+                if let Some(mut chain) = result {
                     if let Ok(msg) = receiver.try_recv() {
                         match msg {
-                            FeedCommand::Address(a) => self.process_address(&db, a).await,
+                            FeedCommand::Address(a) => {
+                                tracing::info!("PROCESSING ADDRESSESSS");
+                                self.process_address(&db, a).await
+                            }
                             FeedCommand::Stop => break,
                         }
                     } else {
-                        self.process_block(&db, &chain).await;
+                        self.fail().await;
+                        //self.process_block(&db, &mut chain).await;
                     }
                 }
             }
@@ -48,116 +58,182 @@ pub trait Feed {
     }
 
     // Wait to the next cycle
-    async fn wait(&self, start: tokio::time::Instant) {
+    async fn wait(&mut self, start: tokio::time::Instant) {
         tracing::info!("Sleep to the nexc cycle");
         tokio::time::sleep(tokio::time::Duration::from_millis(5_000)).await
     }
 
     // If something fail
-    async fn fail(&self) {
+    async fn fail(&mut self) {
         tokio::time::sleep(tokio::time::Duration::from_secs(10)).await
     }
 
     async fn add_addresses(
-        &self,
+        &mut self,
         db: &DatabaseConnection,
         chain_id: i32,
-        address_list: AddressList,
+        address_list: &AddressList,
     ) {
+        if address_list.is_empty() {
+            return;
+        }
+
         tracing::info!("Adding address to DB");
         let statement = Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
-            WITH new_addresses as (SELECT chain, hash FROM unnest($1, $2) as data(chain, hash))
+            WITH new_addresses as (SELECT unnest($2) as hash)
             
             INSERT INTO
                  address (chain, hash)
                  SELECT
-                    T.chain, T.hash
+                    $1, T.hash
                 FROM
                     new_addresses T
                     LEFT JOIN address A
-                        ON A.hash = T.hash AND A.chain = T.chain
+                        ON A.hash = T.hash AND A.chain = $1
                 WHERE 
                     A.id IS NULL
             "#,
-            vec![
-                vec![chain_id.clone(); address_list.len()].into(),
-                address_list.into(),
-            ],
+            vec![chain_id.into(), address_list.clone().into()],
         );
 
         db.execute(statement).await.unwrap();
     }
 
     async fn map_address(
-        &self,
+        &mut self,
         db: &DatabaseConnection,
         chain_id: i32,
-        addresses: Vec<Vec<u8>>,
+        addresses: &Vec<Vec<u8>>,
     ) -> BTreeMap<Vec<u8>, i64> {
+        tracing::info!("Map addresses");
+
+        let mut map = BTreeMap::new();
         let statement = Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
-            WITH addresses as (SELECT chain, hash FROM unnest($1, $2) as data(chain, hash))
+            WITH addresses as (SELECT unnest($2) as hash)
             
             SELECT
-                A1.id, A1.hash
+                A2.id, A2.hash
                 
-                FROM
-                address A1
-                    LEFT JOIN addresses A2
-                        ON A1.hash = A2.hash AND A1.chain = A2.chain
-                WHERE 
-                    A1.id IS NOT NULL
+            FROM
+                addresses A1
+                LEFT JOIN address A2
+                    ON A1.hash = A2.hash AND A2.chain = $1
+            WHERE 
+                    A2.id IS NOT NULL
             "#,
-            vec![
-                vec![chain_id.clone(); addresses.len()].into(),
-                addresses.into(),
-            ],
+            vec![chain_id.into(), addresses.clone().into()],
         );
 
         if let Ok(result) = db.query_all(statement).await {
-            //for let Some(row) in result {
-            //}
+            for row in result {
+                map.insert(
+                    row.try_get("", "hash").unwrap(),
+                    row.try_get("", "id").unwrap(),
+                );
+            }
         }
-
-        BTreeMap::new()
+        map
     }
 
     async fn add_transactions(
-        &self,
+        &mut self,
         db: &DatabaseConnection,
         chain_id: i32,
         transaction_list: TransactionList,
     ) {
-        tracing::info!("Adding address to DB");
-        // select values to SKIP
+        if transaction_list.is_empty() {
+            return;
+        }
 
-        let statement = crate::entity::transaction::Entity::insert_many(
-            transaction_list
-                .iter()
-                .filter(|t| true)
-                .map(|t| crate::entity::transaction::ActiveModel {
-                    chain: Set(chain_id.clone()),
-                    hash: Set(t.0.clone()),
-                    amount: Set(t.1.clone()),
-                    from: Set(t.2.clone()),
-                    to: Set(t.3.clone()),
-                    ..Default::default()
-                })
-                .collect::<Vec<crate::entity::transaction::ActiveModel>>(),
-        );
-        statement.exec(db).await;
+        if let Ok(query) = crate::entity::transaction::Entity::find()
+            .select_only()
+            .column(crate::entity::transaction::Column::Hash)
+            .filter(
+                crate::entity::transaction::Column::Hash.is_in(
+                    transaction_list
+                        .iter()
+                        .map(|t| t.0.clone())
+                        .collect::<Vec<Vec<u8>>>(),
+                ),
+            )
+            .all(db)
+            .await
+        {
+            let transactions: BTreeSet<Vec<u8>> =
+                BTreeSet::from_iter(query.iter().map(|t| t.hash.clone()));
+
+            // Get all address bytes
+            let address_list: Vec<Vec<u8>> = BTreeSet::from_iter(
+                transaction_list
+                    .iter()
+                    .map(|t| t.2.iter().chain(t.3.iter()))
+                    .flatten()
+                    .map(|a| a.clone()),
+            )
+            .iter()
+            .map(|a| a.clone())
+            .collect();
+
+            self.add_addresses(db, chain_id.clone(), &address_list)
+                .await;
+
+            // Transalte bytes to IDs
+            let address_map = self.map_address(db, chain_id.clone(), &address_list).await;
+
+            // Insert transactions
+            if let Err(err) = crate::entity::transaction::Entity::insert_many(
+                transaction_list
+                    .iter()
+                    .filter(|t| !transactions.contains(&t.0))
+                    .map(|t| crate::entity::transaction::ActiveModel {
+                        chain: Set(chain_id.clone()),
+                        hash: Set(t.0.clone()),
+                        amount: Set(if let Some(s) = t.1 {
+                            Some(s as u32)
+                        } else {
+                            None
+                        }),
+                        from: Set(BTreeSet::from_iter(
+                            t.2.iter()
+                                .filter(|a| address_map.contains_key(a.deref()))
+                                .map(|a| address_map.get(a).unwrap().clone()),
+                        )
+                        .into_iter()
+                        .collect()),
+                        to: Set(BTreeSet::from_iter(
+                            t.3.iter()
+                                .filter(|a| address_map.contains_key(a.deref()))
+                                .map(|a| address_map.get(a).unwrap().clone()),
+                        )
+                        .into_iter()
+                        .collect()),
+                        ..Default::default()
+                    })
+                    .collect::<Vec<crate::entity::transaction::ActiveModel>>(),
+            )
+            .exec(db)
+            .await
+            {
+                tracing::error!("{}", err.to_string());
+            }
+        }
     }
 
-    async fn process_block(&self, db: &DatabaseConnection, chain: &crate::entity::chain::Model) {
+    async fn process_block(
+        &mut self,
+        db: &DatabaseConnection,
+        chain: &mut crate::entity::chain::Model,
+    ) {
         tokio::time::sleep(tokio::time::Duration::from_millis(5_000)).await;
-        tracing::info!("Processing block");
+        tracing::info!("Processing block for empty");
     }
 
-    async fn process_address(&self, db: &DatabaseConnection, address: i64) {
+    async fn process_address(&mut self, db: &DatabaseConnection, address: i64) {
         tokio::time::sleep(tokio::time::Duration::from_millis(5_000)).await;
-        tracing::info!("Processing address");
+        tracing::info!("Processing address fo empty");
     }
 }

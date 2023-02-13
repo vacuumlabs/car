@@ -6,6 +6,7 @@ use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, State
 #[openapi(description = "Read address record")]
 pub async fn create(
     #[data] db: DatabaseConnection,
+    #[data] token: String,
     body: Json<shared::Transaction>,
 ) -> Result<Json<shared::Transaction>, Rejection> {
     Ok(body.into())
@@ -31,6 +32,7 @@ pub async fn detail(
 #[post("/api/transaction/{id}")] // Create address endpoint
 #[openapi(description = "Read address record")]
 pub async fn update(
+    #[data] token: String,
     #[data] db: DatabaseConnection,
     body: Json<shared::Transaction>,
     id: String,
@@ -49,6 +51,7 @@ pub async fn update(
 #[delete("/api/transaction/{id}")] // Create address endpoint
 #[openapi(description = "Read address record")]
 pub async fn delete(
+    #[data] token: String,
     #[data] db: DatabaseConnection,
     id: String,
 ) -> Result<Json<shared::Transaction>, Rejection> {

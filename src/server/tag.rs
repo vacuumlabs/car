@@ -6,8 +6,14 @@ use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait, Mo
 #[openapi(description = "Read address record")]
 pub async fn create(
     #[data] db: DatabaseConnection,
+    #[data] token: String,
+    #[header = "authorization"] authorization: String,
     body: Json<shared::Tag>,
 ) -> Result<Json<shared::Tag>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     let body = body.into_inner();
 
     let value = tag::ActiveModel {
@@ -23,7 +29,7 @@ pub async fn create(
             title: new.title,
         }
         .into()),
-        _ => Err(reject::not_found()),
+        _ => Err(warp::reject::custom(super::InternalError)),
     }
 }
 
@@ -39,7 +45,7 @@ pub async fn detail(
             title: value.title.clone(),
         }
         .into()),
-        _ => Err(reject::not_found()),
+        _ => Err(warp::reject::not_found()),
     }
 }
 
@@ -62,10 +68,17 @@ pub async fn list(#[data] db: DatabaseConnection) -> Result<Json<Vec<shared::Tag
 #[post("/api/tag/{id}")] // Create address endpoint
 #[openapi(description = "Read address record")]
 pub async fn update(
+    #[data] token: String,
     #[data] db: DatabaseConnection,
+    #[header = "authorization"] authorization: String,
+
     body: Json<shared::Tag>,
     id: i32,
 ) -> Result<Json<shared::Tag>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     let body = body.into_inner();
 
     match tag::Entity::find_by_id(id).one(&db).await {
@@ -87,7 +100,16 @@ pub async fn update(
 
 #[delete("/api/tag/{id}")] // Create address endpoint
 #[openapi(description = "Read address record")]
-pub async fn delete(#[data] db: DatabaseConnection, id: i32) -> Result<Json<()>, Rejection> {
+pub async fn delete(
+    #[data] token: String,
+    #[data] db: DatabaseConnection,
+    #[header = "authorization"] authorization: String,
+    id: i32,
+) -> Result<Json<()>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     match tag::Entity::find_by_id(id).one(&db).await {
         Ok(Some(value)) => {
             value.delete(&db).await.unwrap();

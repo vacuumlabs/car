@@ -85,6 +85,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                                 "Chain Detail"
                             ],
                         ],
+                        IF!(ctx.edit =>
                         div![
                             C!["col-xs-1"],
                             div![
@@ -92,7 +93,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                                 ev(Ev::Click, |_| Msg::EditToggle),
                                 "Edit"
                             ],
-                        ]
+                        ])
                     ],
                 ],
                 div![

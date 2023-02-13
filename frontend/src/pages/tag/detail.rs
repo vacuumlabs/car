@@ -62,6 +62,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
     if let Some(tag) = &model.tag {
         div![
             C!["container"],
+            IF!(ctx.edit =>
             div![
                 C!["text-right"],
                 div![
@@ -69,7 +70,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                     ev(Ev::Click, |_| Msg::EditToggle),
                     "Edit"
                 ],
-            ],
+            ]),
             if !model.edit {
                 div![
                     div![

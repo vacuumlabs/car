@@ -91,8 +91,10 @@ pub fn pagination<Ms: 'static + std::fmt::Debug>(
     ]
 }
 
-pub fn view_header(url: &Url, model: &crate::Model) -> Node<Msg> {
+pub fn view_header(model: &crate::Model) -> Node<Msg> {
     let address = model.address.clone();
+    let url = &model.ctx.base_url;
+
     nav![
         C!["navbar", "navbar-default",],
         div![
@@ -200,4 +202,28 @@ pub fn view_header(url: &Url, model: &crate::Model) -> Node<Msg> {
             ]
         ]
     ]
+}
+
+pub fn view_footer(model: &crate::Model) -> Node<Msg> {
+    footer![IF!(!model.ctx.edit =>
+        nav![
+        C!["navbar", "navbar-default",],
+        div![
+            C!["navbar-form", "navbar-left"],
+            div![
+                C!["form-group"],
+                input![
+                    attrs! {At::Type => "text", At::Placeholder => "Token", At::Id => "token"},
+                    C!["form-control"],
+                    input_ev(Ev::Input, |value| crate::Msg::TokenChanged(value))
+                ]
+            ],
+            button![
+                //attrs! {At::Type => "submit"},
+                C!["btn", "btn-default"],
+                "Login",
+                ev(Ev::Click, move |_| { Msg::TokenCheck }),
+            ]
+        ],
+    ])]
 }
