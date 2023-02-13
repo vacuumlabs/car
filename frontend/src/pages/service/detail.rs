@@ -1,18 +1,18 @@
-use crate::{model::Service, Context};
+use crate::Context;
 use seed::{prelude::*, *};
 
 #[derive(Default, Debug)]
 pub struct Model {
     pub slug: String,
     pub edit: bool,
-    pub service: Option<Service>,
+    pub service: Option<shared::Service>,
     pub saved: Option<bool>,
 }
 
 #[derive(Debug)]
 pub enum Msg {
     Load,
-    ServiceFetched(fetch::Result<crate::model::Service>),
+    ServiceFetched(fetch::Result<shared::Service>),
     EditToggle,
     ServiceTitleChanged(String),
 
@@ -62,6 +62,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
     if let Some(service) = &model.service {
         div![
             C!["container"],
+            IF!(ctx.edit =>
             div![
                 C!["text-right"],
                 div![
@@ -69,7 +70,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                     ev(Ev::Click, |_| Msg::EditToggle),
                     "Edit"
                 ],
-            ],
+            ]),
             if !model.edit {
                 div![
                     div![
@@ -118,7 +119,17 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                         ev(Ev::Click, |_| Msg::Save),
                     ]
                 ]
-            }
+            },
+            div![ul![
+                C!["list-group"],
+                li![
+                    C!["list-group-item"],
+                    a![
+                        attrs! {At::Href => crate::Urls::new(ctx.base_url.clone()).address().list_by_service(service.id.unwrap().clone())},
+                        "Addresses"
+                    ]
+                ],
+            ]]
         ]
     } else {
         div!["Not found"]

@@ -1,23 +1,23 @@
-use crate::{model::Tag, pages::pagination, Context, Urls};
+use crate::{pages::pagination, Context, Urls};
 use seed::{prelude::*, *};
 
 #[derive(Default, Debug)]
 pub struct Model {
     filter: String,
     pagination: crate::Pagination,
-    new_tag: Option<Tag>,
+    new_tag: Option<shared::Tag>,
 }
 
 #[derive(Debug)]
 pub enum Msg {
     Load,
     Pagination(usize),
-    TagsFetched(fetch::Result<Vec<crate::model::Tag>>),
+    TagsFetched(fetch::Result<Vec<shared::Tag>>),
     FilterChanged(String),
     TagNew,
     TagNewTitleChanged(String),
     TagCreate,
-    TagCreated(fetch::Result<crate::model::Tag>),
+    TagCreated(fetch::Result<shared::Tag>),
     TagDelete(i32),
     TagDeleted(fetch::Result<i32>),
 }
@@ -35,7 +35,7 @@ pub fn update(msg: Msg, model: &mut Model, ctx: &mut Context, orders: &mut impl 
         }
         Msg::TagNew => {
             if model.new_tag.is_none() {
-                model.new_tag = Some(Tag {
+                model.new_tag = Some(shared::Tag {
                     title: String::new(),
                     id: None,
                 });
@@ -92,7 +92,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
         .into_iter()
         .filter(|s| s.title.to_lowercase().contains(&model.filter))
         .map(|s| s.clone())
-        .collect::<Vec<Tag>>();
+        .collect::<Vec<shared::Tag>>();
 
     let size = filtered_tags.len();
     let start = if model.pagination.start > size {
@@ -106,7 +106,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
         model.pagination.start + ctx.page_size
     };
 
-    let tags: Vec<Tag> = filtered_tags[start..end]
+    let tags: Vec<shared::Tag> = filtered_tags[start..end]
         .iter()
         .map(|c| c.clone())
         .collect();
@@ -114,6 +114,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
     div![
         C!["container"],
         h2!["Tags"],
+        IF!(ctx.edit =>
         div![
             C!["text-right"],
             span![
@@ -125,7 +126,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 "Create tag",
                 ev(Ev::Click, |_| Msg::TagNew),
             ],
-        ],
+        ]),
         if let Some(tag) = &model.new_tag {
             div![
                 C!["panel", "panel-default"],                            
@@ -198,11 +199,12 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                             ],
                             td![
                                 C!["text-right"],
+                                IF!(ctx.edit =>
                                 div![
                                     C!["btn", "btn-primary"],
                                     ev(Ev::Click, move |_| Msg::TagDelete(id)),
                                     "DELETE"
-                                ]
+                                ])
                             ]
                         ]
                     })

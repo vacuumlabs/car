@@ -1,18 +1,23 @@
 use crate::entity::address;
-use crate::server::Address;
 use rweb::*;
 use sea_orm::{
     ActiveModelTrait, ActiveValue, Condition, DatabaseConnection, DbBackend, EntityTrait,
     ModelTrait, Statement,
 };
-
 /// Create address endpoint
 #[post("/api/address/")]
 #[openapi(description = "Create address record")]
 pub async fn create(
     #[data] db: DatabaseConnection,
-    body: Json<Address>,
-) -> Result<Json<Address>, Rejection> {
+    #[data] token: String,
+    #[header = "authorization"] authorization: String,
+
+    body: Json<shared::Address>,
+) -> Result<Json<shared::Address>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     let body = body.into_inner();
 
     let value = address::ActiveModel {
@@ -27,7 +32,7 @@ pub async fn create(
     .await;
 
     match value {
-        Ok(new) => Ok(Address {
+        Ok(new) => Ok(shared::Address {
             id: Some(new.id),
             title: new.title,
             chain: new.chain.clone(),
@@ -46,14 +51,14 @@ pub async fn create(
 pub async fn detail(
     #[data] db: DatabaseConnection,
     id: String,
-) -> Result<Json<Address>, Rejection> {
+) -> Result<Json<shared::Address>, Rejection> {
     match address::Entity::find_by_id(id.parse::<i64>().unwrap())
         .one(&db)
         .await
     {
         Ok(Some(a)) => {
             tracing::info!("output: {:?}", a);
-            Ok(Address {
+            Ok(shared::Address {
                 id: Some(a.id),
                 title: a.title.clone(),
                 hash: hex::encode(&a.hash),
@@ -77,9 +82,41 @@ pub async fn detail(
     }
 }
 
-pub fn address_list_query(list: Vec<address::Model>) -> Vec<Address> {
+#[post("/api/address/{id}/process")]
+#[openapi(description = "Read address record")]
+pub async fn process(
+    #[data] feed_channel: crate::FeedChannel,
+    #[data] db: DatabaseConnection,
+    #[data] token: String,
+    #[header = "authorization"] authorization: String,
+    id: i64,
+) -> Result<Json<bool>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
+    if let Ok(Some(address)) = crate::entity::address::Entity::find_by_id(id)
+        .one(&db)
+        .await
+    {
+        let feed_channel = feed_channel.read().await;
+        if let Some(feed) = feed_channel.get(&address.chain) {
+            if let Err(_) = feed
+                .send(crate::feed::FeedCommand::Address(address.id))
+                .await
+            {
+                return Ok(true.into());
+            } else {
+                return Ok(true.into());
+            }
+        };
+    }
+    Ok(false.into())
+}
+
+pub fn address_list_query(list: Vec<address::Model>) -> Vec<shared::Address> {
     list.iter()
-        .map(|a| Address {
+        .map(|a| shared::Address {
             id: Some(a.id),
             title: a.title.clone(),
             hash: hex::encode(&a.hash),
@@ -97,7 +134,7 @@ pub fn address_list_query(list: Vec<address::Model>) -> Vec<Address> {
                 .collect::<Vec<i32>>(),
             chain: a.chain.clone(),
         })
-        .collect::<Vec<Address>>()
+        .collect::<Vec<shared::Address>>()
 }
 
 /// Get address list by tag id endpoint
@@ -106,7 +143,7 @@ pub fn address_list_query(list: Vec<address::Model>) -> Vec<Address> {
 pub async fn list_by_address(
     #[data] db: DatabaseConnection,
     address: String,
-) -> Result<Json<Vec<Address>>, Rejection> {
+) -> Result<Json<Vec<shared::Address>>, Rejection> {
     tracing::info!("By address");
 
     let mut bin_address: Option<Vec<u8>> = None;
@@ -153,7 +190,7 @@ pub async fn list_by_address(
 pub async fn list_by_tag(
     #[data] db: DatabaseConnection,
     id: i32,
-) -> Result<Json<Vec<Address>>, Rejection> {
+) -> Result<Json<Vec<shared::Address>>, Rejection> {
     match address::Entity::find()
         .from_raw_sql(Statement::from_sql_and_values(
             DbBackend::Postgres,
@@ -174,7 +211,7 @@ pub async fn list_by_tag(
 pub async fn list_by_service(
     #[data] db: DatabaseConnection,
     id: i32,
-) -> Result<Json<Vec<Address>>, Rejection> {
+) -> Result<Json<Vec<shared::Address>>, Rejection> {
     match address::Entity::find()
         .from_raw_sql(Statement::from_sql_and_values(
             DbBackend::Postgres,
@@ -195,7 +232,7 @@ pub async fn list_by_service(
 pub async fn list_by_transaction(
     #[data] db: DatabaseConnection,
     id: i32,
-) -> Result<Json<Vec<Address>>, Rejection> {
+) -> Result<Json<Vec<shared::Address>>, Rejection> {
     match address::Entity::find()
         .from_raw_sql(Statement::from_sql_and_values(
             DbBackend::Postgres,
@@ -213,10 +250,16 @@ pub async fn list_by_transaction(
 #[post("/api/address/{id}")] // Create address endpoint
 #[openapi(description = "Update address record")]
 pub async fn update(
+    #[data] token: String,
     #[data] db: DatabaseConnection,
+    #[header = "authorization"] authorization: String,
     id: i64,
-    body: Json<Address>,
-) -> Result<Json<Address>, Rejection> {
+    body: Json<shared::Address>,
+) -> Result<Json<shared::Address>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     let body = body.into_inner();
 
     match address::Entity::find_by_id(id).one(&db).await {
@@ -228,7 +271,7 @@ pub async fn update(
             value.services = ActiveValue::Set(body.services.clone());
             let value: address::Model = value.update(&db).await.unwrap();
 
-            Ok(Address {
+            Ok(shared::Address {
                 id: Some(value.id),
                 title: value.title.clone(),
                 chain: value.chain,
@@ -245,11 +288,18 @@ pub async fn update(
 #[delete("/api/address/{id}")] // Create address endpoint
 #[openapi(description = "Read address record")]
 pub async fn delete(
+    #[data] token: String,
     #[data] db: DatabaseConnection,
+    #[header = "authorization"] authorization: String,
+
     id: String,
-    body: Json<Address>,
-) -> Result<Json<Address>, Rejection> {
-    let address = Address {
+    body: Json<shared::Address>,
+) -> Result<Json<shared::Address>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
+    let address = shared::Address {
         id: Some(1),
         title: Some(String::from("test")),
         hash: hex::encode(vec![0, 0]),

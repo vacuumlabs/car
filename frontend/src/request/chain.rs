@@ -1,9 +1,9 @@
-use crate::model;
 use seed::{prelude::*, *};
 
-pub async fn create(chain: model::Chain) -> fetch::Result<model::Chain> {
+pub async fn create(chain: shared::Chain, token: String) -> fetch::Result<shared::Chain> {
     Request::new("/api/chain/")
         .method(Method::Post)
+        .header(Header::bearer(token))
         .json(&chain)?
         .fetch()
         .await?
@@ -12,7 +12,7 @@ pub async fn create(chain: model::Chain) -> fetch::Result<model::Chain> {
         .await
 }
 
-pub async fn list() -> fetch::Result<Vec<model::Chain>> {
+pub async fn list() -> fetch::Result<Vec<shared::Chain>> {
     Request::new("/api/chain")
         .method(Method::Get)
         .fetch()
@@ -22,7 +22,7 @@ pub async fn list() -> fetch::Result<Vec<model::Chain>> {
         .await
 }
 
-pub async fn detail(id: i32) -> fetch::Result<model::Chain> {
+pub async fn detail(id: i32) -> fetch::Result<shared::Chain> {
     Request::new(format!("/api/chain/{}", id))
         .method(Method::Get)
         .fetch()
@@ -32,7 +32,7 @@ pub async fn detail(id: i32) -> fetch::Result<model::Chain> {
         .await
 }
 
-pub async fn save(chain: model::Chain) -> fetch::Result<model::Chain> {
+pub async fn save(chain: shared::Chain) -> fetch::Result<shared::Chain> {
     Request::new(format!("/api/chain/{}", chain.id.unwrap()))
         .method(Method::Post)
         .json(&chain)?

@@ -5,18 +5,14 @@ use seed::{
     *,
 };
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+use shared;
 use std::collections::HashMap;
-use std::{
-    cell::{Cell, RefCell},
-    rc::Rc,
-};
-
-mod model;
+use uuid::Uuid;
 mod pages;
 mod request;
 
 const LOCAL_STORAGE_KEY: &str = "crypto-address-relation-storage";
+const LOCAL_STORAGE_TOKEN: &str = "crypto-address-relation-token";
 
 const CHAIN: &str = "chain";
 const TAG: &str = "tag";
@@ -29,22 +25,26 @@ const ANALYSIS: &str = "analysis";
 #[derive(Debug)]
 pub struct Context {
     pub base_url: Url,
+    pub edit: bool,
+    pub token: String,
     pub page_size: usize,
-    pub chains: HashMap<i32, model::Chain>,
-    pub tags: HashMap<i32, model::Tag>,
-    pub services: HashMap<i32, model::Service>,
-    pub lists: HashMap<Uuid, model::StoredList>,
+    pub chains: HashMap<i32, shared::Chain>,
+    pub tags: HashMap<i32, shared::Tag>,
+    pub services: HashMap<i32, shared::Service>,
+    pub lists: HashMap<Uuid, shared::StoredList>,
 }
 
 impl Default for Context {
     fn default() -> Self {
         Self {
-            page_size: 50,
+            edit: false,
+            token: LocalStorage::get(LOCAL_STORAGE_TOKEN).unwrap_or_default(),
+            page_size: 10,
             base_url: Url::default(),
             chains: HashMap::new(),
             tags: HashMap::new(),
             services: HashMap::new(),
-            lists: LocalStorage::get(LOCAL_STORAGE_KEY).unwrap_or_default()
+            lists: LocalStorage::get(LOCAL_STORAGE_KEY).unwrap_or_default(),
         }
     }
 }
@@ -154,10 +154,13 @@ pub enum Msg {
     UrlChanged(subs::UrlChanged),
     AddressChanged(String),
     AddressGo,
+    Token(fetch::Result<bool>),
+    TokenChanged(String),
+    TokenCheck,
     ExternalAddress(String),
-    ChainsFetched(fetch::Result<Vec<model::Chain>>),
-    TagsFetched(fetch::Result<Vec<model::Tag>>),
-    ServicesFetched(fetch::Result<Vec<model::Service>>),
+    ChainsFetched(fetch::Result<Vec<shared::Chain>>),
+    TagsFetched(fetch::Result<Vec<shared::Tag>>),
+    ServicesFetched(fetch::Result<Vec<shared::Service>>),
 
     LoadContext,
     Chain(pages::chain::Msg),
@@ -179,6 +182,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             orders.perform_cmd(async { Msg::ChainsFetched(request::chain::list().await) });
             orders.perform_cmd(async { Msg::ServicesFetched(request::service::list().await) });
             orders.perform_cmd(async { Msg::TagsFetched(request::tag::list().await) });
+            orders.send_msg(Msg::TokenCheck);
         }
 
         Msg::AddressChanged(value) => {
@@ -193,6 +197,22 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .go_and_load();
         }
 
+        Msg::TokenChanged(token) => {
+            model.ctx.token = token;
+            LocalStorage::insert(LOCAL_STORAGE_TOKEN, &model.ctx.token);
+        }
+
+        Msg::TokenCheck => {
+            let token = model.ctx.token.clone();
+            orders.perform_cmd(async { Msg::Token(request::token_check(token).await) });
+        }
+
+        Msg::Token(Ok(_)) => {
+            model.ctx.edit = true;
+        }
+        Msg::Token(Err(_)) => {
+            model.ctx.edit = false;
+        }
         Msg::ExternalAddress(value) => Url::go_and_load_with_str(value),
 
         Msg::ChainsFetched(Ok(chains)) => {
@@ -289,7 +309,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
 fn view(model: &Model) -> impl IntoNodes<Msg> {
     nodes![
-        pages::view_header(&model.ctx.base_url, model),
+        pages::view_header(model),
         match &model.page {
             Page::Home => pages::home::view(),
 
@@ -311,6 +331,7 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
 
             _ => pages::not_found::view(),
         },
+        pages::view_footer(model),
     ]
 }
 // ------ ------

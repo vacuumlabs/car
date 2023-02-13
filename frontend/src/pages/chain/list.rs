@@ -1,23 +1,23 @@
-use crate::{model::Chain, Context, Urls, pages::pagination};
+use crate::{Context, Urls, pages::pagination};
 use seed::{prelude::*, *};
 
 #[derive(Default, Debug)]
 pub struct Model {
     filter: String,
     pagination: crate::Pagination,
-    new_chain: Option<Chain>,
+    new_chain: Option<shared::Chain>,
 }
 
 #[derive(Debug)]
 pub enum Msg {
     Load,
     Pagination(usize),
-    ChainsFetched(fetch::Result<Vec<crate::model::Chain>>),
+    ChainsFetched(fetch::Result<Vec<shared::Chain>>),
     FilterChanged(String),
     ChainNew,
     ChainNewTitleChanged(String),
     ChainCreate,
-    ChainCreated(fetch::Result<crate::model::Chain>),
+    ChainCreated(fetch::Result<shared::Chain>),
     ChainDelete(i32),
     ChainDeleted(fetch::Result<i32>),
 }
@@ -39,7 +39,7 @@ pub fn update(
         }
         Msg::ChainNew => {
             if model.new_chain.is_none() {
-                model.new_chain = Some(Chain{title: String::new(), id: None});
+                model.new_chain = Some(shared::Chain{title: String::new(), ..Default::default()});
 
             } else {
                 model.new_chain = None;
@@ -53,9 +53,10 @@ pub fn update(
         Msg::ChainCreate => {
             if let Some(chain) = &model.new_chain {
                 let chain = chain.clone();
+                let token = ctx.token.clone();
                 orders.perform_cmd(
                     async move {
-                        Msg::ChainCreated(crate::request::chain::create(chain.clone()).await)
+                        Msg::ChainCreated(crate::request::chain::create(chain.clone(), token).await)
                     }
                 );
             }
@@ -99,13 +100,13 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                                     .into_iter()
                                     .filter(|s| s.title.to_lowercase().contains(&model.filter))
                                     .map(|s| s.clone())
-                                    .collect::<Vec<Chain>>();
+                                    .collect::<Vec<shared::Chain>>();
 
     let size = filtered_chains.len();
     let start = if model.pagination.start > size { size } else { model.pagination.start };
     let end = if model.pagination.start + ctx.page_size > size { size } else { model.pagination.start + ctx.page_size};
 
-    let mut chains: Vec<Chain> = filtered_chains
+    let mut chains: Vec<shared::Chain> = filtered_chains
                         [start..end]
                         .iter()
                         .map(|c| c.clone()).collect();
@@ -116,7 +117,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
     div![
         C!["container"],
         h2!["Chains"],
-        div![
+        IF!(ctx.edit => div![
             C!["text-right"],
             span![
                 C!["btn", "btn-primary", "right"],
@@ -127,7 +128,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 "Create chain",
                 ev(Ev::Click, |_| Msg::ChainNew),
             ],
-        ],
+        ]),
         if let Some(chain) = &model.new_chain {
             div![
                 C!["panel", "panel-default"],                            
@@ -191,11 +192,12 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                             td![ch.title.clone()],
                             td![
                                 C!["text-right"],
-                                span![
+                                IF!(ctx.edit =>
+                                div![
                                     C!["btn", "btn-primary"],
                                     ev(Ev::Click, move |_| Msg::ChainDelete(id)),
                                     "DELETE"
-                                ],
+                                ]),
                             ],
                         ]
                     })

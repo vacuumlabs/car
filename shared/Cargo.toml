@@ -1,0 +1,15 @@
+[package]
+name = "shared"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+
+[dependencies]
+rweb = {workspace = true, optional = true}
+serde = { workspace = true }
+uuid = { workspace = true }
+strum = { workspace = true , optional = true}
+strum_macros = { workspace = true, optional = true }
+
+[features]
+schema = ["dep:rweb", "dep:strum", "dep:strum_macros"]

@@ -1,11 +1,11 @@
-use crate::{model::Service, Context, Urls, pages::pagination};
+use crate::{Context, Urls, pages::pagination};
 use seed::{prelude::*, *};
 
 #[derive(Default, Debug)]
 pub struct Model {
     filter: String,
     pagination: crate::Pagination,
-    new_service: Option<Service>,
+    new_service: Option<shared::Service>,
 }
 
 #[derive(Debug)]
@@ -15,7 +15,7 @@ pub enum Msg {
     ServiceNew,
     ServiceNewTitleChanged(String),
     ServiceCreate,
-    ServiceCreated(fetch::Result<crate::model::Service>),
+    ServiceCreated(fetch::Result<shared::Service>),
     ServiceDelete(i32),
     ServiceDeleted(fetch::Result<i32>),
 }
@@ -38,7 +38,7 @@ pub fn update(
         }
         Msg::ServiceNew => {
             if model.new_service.is_none() {
-                model.new_service = Some(Service{title: String::new(), id: None});
+                model.new_service = Some(shared::Service{title: String::new(), id: None});
 
             } else {
                 model.new_service = None;
@@ -97,23 +97,18 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
     let filtered_services = ctx
                                     .services
                                     .values()
-                                    .into_iter()
-                                    .filter(|s| s.title.to_lowercase().contains(&model.filter))
-                                    .map(|s| s.clone())
-                                    .collect::<Vec<Service>>();
+                                    .filter(|s| s.title.to_lowercase().contains(&model.filter));
+                                    
 
-    let size = filtered_services.len();
-    let start = if model.pagination.start > size { size } else { model.pagination.start };
-    let end = if model.pagination.start + ctx.page_size > size { size } else { model.pagination.start + ctx.page_size};
+    let size = filtered_services.clone().count();
 
-    let services: Vec<Service> = filtered_services
-                        [start..end]
-                        .iter()
+    let services: Vec<shared::Service> = filtered_services.skip(model.pagination.start).take(ctx.page_size)
                         .map(|c| c.clone()).collect();
     
     div![
         C!["container"],
         h2!["Services"],
+        IF!(ctx.edit =>
         div![
             C!["text-right"],
             span![
@@ -125,7 +120,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 "Create service",
                 ev(Ev::Click, |_| Msg::ServiceNew),
             ],
-        ],
+        ]),
         if let Some(service) = &model.new_service {
             div![
                 C!["panel", "panel-default"],                            
@@ -190,13 +185,15 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                                     attrs!{At::Href => Urls::new(ctx.base_url.clone()).address().list_by_service(id.clone())}
                                 ]
                             ],
+                            
                             td![
                                 C!["text-right"],                                
-                                span![
+                                IF!(ctx.edit => 
+                                div![
                                     C!["btn", "btn-primary"],
                                     ev(Ev::Click, move |_| Msg::ServiceDelete(id)),
                                     "DELETE"
-                                ]
+                                ])
                             ]
                         ]
                     })

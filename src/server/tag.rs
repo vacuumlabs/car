@@ -1,5 +1,4 @@
 use crate::entity::tag;
-use crate::server::Tag;
 use rweb::*;
 use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait, ModelTrait};
 
@@ -7,8 +6,14 @@ use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait, Mo
 #[openapi(description = "Read address record")]
 pub async fn create(
     #[data] db: DatabaseConnection,
-    body: Json<Tag>,
-) -> Result<Json<Tag>, Rejection> {
+    #[data] token: String,
+    #[header = "authorization"] authorization: String,
+    body: Json<shared::Tag>,
+) -> Result<Json<shared::Tag>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     let body = body.into_inner();
 
     let value = tag::ActiveModel {
@@ -19,39 +24,42 @@ pub async fn create(
     .await;
 
     match value {
-        Ok(new) => Ok(Tag {
-            id: new.id,
+        Ok(new) => Ok(shared::Tag {
+            id: Some(new.id),
             title: new.title,
         }
         .into()),
-        _ => Err(reject::not_found()),
+        _ => Err(warp::reject::custom(super::InternalError)),
     }
 }
 
 #[get("/api/tag/{id}")] // Create address endpoint
 #[openapi(description = "Read address record")]
-pub async fn detail(#[data] db: DatabaseConnection, id: i32) -> Result<Json<Tag>, Rejection> {
+pub async fn detail(
+    #[data] db: DatabaseConnection,
+    id: i32,
+) -> Result<Json<shared::Tag>, Rejection> {
     match tag::Entity::find_by_id(id).one(&db).await {
-        Ok(Some(value)) => Ok(Tag {
-            id: value.id,
+        Ok(Some(value)) => Ok(shared::Tag {
+            id: Some(value.id),
             title: value.title.clone(),
         }
         .into()),
-        _ => Err(reject::not_found()),
+        _ => Err(warp::reject::not_found()),
     }
 }
 
 #[get("/api/tag/")] // Create address endpoint
 #[openapi(description = "Read address record")]
-pub async fn list(#[data] db: DatabaseConnection) -> Result<Json<Vec<Tag>>, Rejection> {
+pub async fn list(#[data] db: DatabaseConnection) -> Result<Json<Vec<shared::Tag>>, Rejection> {
     match tag::Entity::find().all(&db).await {
         Ok(chain_list) => Ok(chain_list
             .iter()
-            .map(|t| Tag {
-                id: t.id,
+            .map(|t| shared::Tag {
+                id: Some(t.id),
                 title: t.title.clone(),
             })
-            .collect::<Vec<Tag>>()
+            .collect::<Vec<shared::Tag>>()
             .into()),
         _ => Err(reject::not_found()),
     }
@@ -60,10 +68,17 @@ pub async fn list(#[data] db: DatabaseConnection) -> Result<Json<Vec<Tag>>, Reje
 #[post("/api/tag/{id}")] // Create address endpoint
 #[openapi(description = "Read address record")]
 pub async fn update(
+    #[data] token: String,
     #[data] db: DatabaseConnection,
-    body: Json<Tag>,
+    #[header = "authorization"] authorization: String,
+
+    body: Json<shared::Tag>,
     id: i32,
-) -> Result<Json<Tag>, Rejection> {
+) -> Result<Json<shared::Tag>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     let body = body.into_inner();
 
     match tag::Entity::find_by_id(id).one(&db).await {
@@ -73,9 +88,9 @@ pub async fn update(
             value.title = ActiveValue::Set(body.title.clone());
             let value: tag::Model = value.update(&db).await.unwrap();
 
-            Ok(Tag {
+            Ok(shared::Tag {
                 title: value.title.clone(),
-                id: value.id,
+                id: Some(value.id),
             }
             .into())
         }
@@ -85,7 +100,16 @@ pub async fn update(
 
 #[delete("/api/tag/{id}")] // Create address endpoint
 #[openapi(description = "Read address record")]
-pub async fn delete(#[data] db: DatabaseConnection, id: i32) -> Result<Json<()>, Rejection> {
+pub async fn delete(
+    #[data] token: String,
+    #[data] db: DatabaseConnection,
+    #[header = "authorization"] authorization: String,
+    id: i32,
+) -> Result<Json<()>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(super::Unauthorized));
+    }
+
     match tag::Entity::find_by_id(id).one(&db).await {
         Ok(Some(value)) => {
             value.delete(&db).await.unwrap();

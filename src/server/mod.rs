@@ -1,7 +1,11 @@
+use rweb::rt::IndexMap;
 use rweb::*;
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 mod address;
 mod analysis;
 mod chain;
@@ -10,148 +14,114 @@ mod tag;
 mod transaction;
 mod transform;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
-pub struct AddressRelationHuman {
-    id: i64,
-    hex: String,
-    human: String,
-    inputs: Vec<AddressRefHuman>,
-    outputs: Vec<AddressRefHuman>,
-    mixed_in: Vec<AddressRefHuman>,
-    mixed_out: Vec<AddressRefHuman>,
-    tags: Vec<String>,
-    services: Vec<String>,
+#[derive(Debug, Clone)]
+pub struct Unauthorized;
+
+#[derive(Debug, Clone)]
+pub struct NotFound;
+
+#[derive(Debug, Clone)]
+pub struct InternalError;
+
+impl warp::reject::Reject for Unauthorized {}
+impl warp::reject::Reject for NotFound {}
+impl warp::reject::Reject for InternalError {}
+
+#[get("/api/token")]
+#[openapi(description = "Check token")]
+pub async fn token_check(
+    #[header = "authorization"] authorization: String,
+    #[data] token: String,
+) -> Result<Json<bool>, Rejection> {
+    if !authorization.ends_with(&token) {
+        return Err(reject::custom(Unauthorized));
+    }
+
+    Ok(true.into())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
-pub struct AddressRelation {
-    id: i64,
-    hex: String,
-    human: String,
-    inputs: Vec<AddressRef>,
-    outputs: Vec<AddressRef>,
-    mixed_in: Vec<AddressRef>,
-    mixed_out: Vec<AddressRef>,
-    tags: Vec<i32>,
-    services: Vec<i32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
-pub struct Address {
-    id: Option<i64>,
-    hash: String,
-    title: Option<String>,
-    chain: i32,
-    services: Vec<i32>,
-    tags: Vec<i32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
-pub struct Chain {
-    id: Option<i32>,
-    title: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
-pub struct Service {
-    id: i32,
-    title: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
-pub struct Tag {
-    id: i32,
-    title: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
-pub struct Transaction {
-    id: Option<i32>,
-    chain: i32,
-    hash: Vec<u8>,
-    amount: i64,
-    from: Vec<i64>,
-    to: Vec<i64>,
-}
-
-/// Only for internal look up
-#[derive(Debug)]
-pub struct PrivAddress {
-    pub title: String,
-    pub chain: i32,
-    pub hash: Vec<u8>,
-    pub tags: Vec<i32>,
-    pub services: Vec<i32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
-pub struct AddressRef {
-    id: i64,
-    hex: String,
-    human: String,
-    quantity: i32,
-    tags: Vec<i32>,
-    services: Vec<i32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Schema, Default)]
-pub struct AddressRefHuman {
-    id: i64,
-    hex: String,
-    human: String,
-    quantity: i32,
-    tags: Vec<String>,
-    services: Vec<String>,
-}
-
-#[get("/")]
-#[openapi(description = "Test description?")]
-async fn index(#[data] db: DatabaseConnection) -> Result<String, Rejection> {
-    Ok(String::from(
-        "content type will be 'text/plain' as you return String",
-    ))
-}
-
-pub async fn run(bind: &SocketAddr, db: &DatabaseConnection) {
-    let static_path = std::env::var("STATIC_PATH").unwrap_or(String::from("frontend/dist"));
+pub async fn run(
+    bind: &SocketAddr,
+    db: &DatabaseConnection,
+    feed_channel: crate::FeedChannel,
+    token: String,
+    frontend_path: String,
+) {
     let (spec, filter) = openapi::spec().build(|| {
-        tag::create(db.clone())
+        token_check(token.clone())
+            .or(tag::create(db.clone(), token.clone()))
             .or(tag::detail(db.clone()))
             .or(tag::list(db.clone()))
-            .or(tag::update(db.clone()))
-            .or(tag::delete(db.clone()))
+            .or(tag::update(db.clone(), token.clone()))
+            .or(tag::delete(db.clone(), token.clone()))
             // Service
-            .or(service::create(db.clone()))
+            .or(service::create(db.clone(), token.clone()))
             .or(service::detail(db.clone()))
             .or(service::list(db.clone()))
-            .or(service::update(db.clone()))
-            .or(service::delete(db.clone()))
+            .or(service::update(db.clone(), token.clone()))
+            .or(service::delete(db.clone(), token.clone()))
             // Chain
-            .or(chain::create(db.clone()))
+            .or(chain::create(
+                db.clone(),
+                token.clone(),
+                feed_channel.clone(),
+            ))
             .or(chain::detail(db.clone()))
             .or(chain::list(db.clone()))
-            .or(chain::update(db.clone()))
-            .or(chain::delete(db.clone()))
+            .or(chain::update(db.clone(), token.clone()))
+            .or(chain::delete(
+                token.clone(),
+                db.clone(),
+                feed_channel.clone(),
+            ))
             // Address
             .or(address::detail(db.clone()))
-            .or(address::update(db.clone()))
-            .or(address::delete(db.clone()))
-            .or(address::create(db.clone()))
+            .or(address::update(db.clone(), token.clone()))
+            .or(address::delete(db.clone(), token.clone()))
+            .or(address::create(db.clone(), token.clone()))
+            .or(address::process(
+                db.clone(),
+                token.clone(),
+                feed_channel.clone(),
+            ))
             .or(address::list_by_address(db.clone()))
             .or(address::list_by_tag(db.clone()))
             .or(address::list_by_service(db.clone()))
             .or(address::list_by_transaction(db.clone()))
             // Transaction
-            .or(transaction::create(db.clone()))
+            .or(transaction::create(db.clone(), token.clone()))
             .or(transaction::detail(db.clone()))
-            .or(transaction::update(db.clone()))
-            .or(transaction::delete(db.clone()))
+            .or(transaction::update(db.clone(), token.clone()))
+            .or(transaction::delete(db.clone(), token.clone()))
             // Analysis
             .or(analysis::relation(db.clone()))
             .or(analysis::relation_human(db.clone()))
-            .or(warp::fs::dir(static_path.clone()))
-            .or(warp::fs::file(static_path + "/index.html"))
     });
 
-    serve(openapi_docs(spec).or(filter)).run(bind.clone()).await;
+    serve(
+        openapi_docs(spec)
+            .or(filter)
+            // Rest of get request handle with static files
+            .or(warp::get().and(warp::fs::dir(frontend_path.clone())))
+            .or(warp::get().and(warp::fs::file(frontend_path.clone() + "/index.html")))
+            .recover(|err: Rejection| async move {
+                let (reply, code) = if let Some(_err) = err.find::<Unauthorized>() {
+                    (
+                        "UNAUTHORIZED".to_string(),
+                        warp::http::StatusCode::UNAUTHORIZED,
+                    )
+                } else if let Some(_err) = err.find::<NotFound>() {
+                    ("NOT FOUND".to_string(), warp::http::StatusCode::NOT_FOUND)
+                } else {
+                    (
+                        "INTERNAL_SERVER_ERROR".to_string(),
+                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    )
+                };
+
+                Ok::<_, std::convert::Infallible>(warp::reply::with_status(reply, code))
+            }),
+    )
+    .run(bind.clone())
+    .await;
 }

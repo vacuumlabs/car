@@ -1,7 +1,6 @@
-use crate::model;
 use seed::{prelude::*, *};
 
-pub async fn create(tag: model::Tag) -> fetch::Result<model::Tag> {
+pub async fn create(tag: shared::Tag) -> fetch::Result<shared::Tag> {
     Request::new("/api/tag/")
         .method(Method::Post)
         .json(&tag)?
@@ -12,7 +11,7 @@ pub async fn create(tag: model::Tag) -> fetch::Result<model::Tag> {
         .await
 }
 
-pub async fn list() -> fetch::Result<Vec<model::Tag>> {
+pub async fn list() -> fetch::Result<Vec<shared::Tag>> {
     Request::new("/api/tag")
         .method(Method::Get)
         .fetch()
@@ -22,7 +21,7 @@ pub async fn list() -> fetch::Result<Vec<model::Tag>> {
         .await
 }
 
-pub async fn detail(id: i32) -> fetch::Result<model::Tag> {
+pub async fn detail(id: i32) -> fetch::Result<shared::Tag> {
     Request::new(format!("/api/tag/{}", id))
         .method(Method::Get)
         .fetch()
@@ -32,7 +31,7 @@ pub async fn detail(id: i32) -> fetch::Result<model::Tag> {
         .await
 }
 
-pub async fn save(tag: model::Tag) -> fetch::Result<model::Tag> {
+pub async fn save(tag: shared::Tag) -> fetch::Result<shared::Tag> {
     Request::new(format!("/api/tag/{}", tag.id.unwrap()))
         .method(Method::Post)
         .json(&tag)?

@@ -1,8 +1,8 @@
 use crate::{
-    model::{AddressRef, AddressRelation},
     pages::pagination,
     Context, Pagination, Urls,
 };
+use     shared::{AddressRef, AddressRelation};
 use seed::{prelude::*, *};
 use std::collections::HashMap;
 use std::iter::FromIterator;
@@ -149,7 +149,7 @@ pub fn view_relation(model: &Model, ctx: &Context, addresses: &Vec<AddressRef>) 
                 span![format!("{}X ", i.quantity), style! {St::Color => "red"}],
                 a![
                     attrs!{At::Href => crate::Urls::new(ctx.base_url.clone()).address().detail(i.id.clone())},
-                    format!("{}...{}", i.hex[0..3].to_string(), i.hex[i.hex.len()-3..].to_string())
+                    format!("{}...{}", i.hex.chars().take(3).collect::<String>(), i.hex.chars().skip(std::cmp::max(i.hex.len(), 3)-3).take(3).collect::<String>())
                 ],
                 div![crate::pages::tag_badge(ctx, &i.tags)],
                 div![crate::pages::service_badge(ctx, &i.services)],
@@ -296,7 +296,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 div![C!["panel-heading"], h3![C!["panel-title"], "Inputs"]],
                 div![
                     C!["panel-body"],
-                    style! {St::Height => "300px", St::OverflowY => "scroll"},
+                    style! {St::MaxHeight => "300px", St::OverflowY => "scroll"},
                     ul![
                         C!["list-group"],
                         view_relation(model, ctx, &model.relations.inputs)
@@ -311,7 +311,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 div![C!["panel-heading"], h3![C!["panel-title"], "Outputs"]],
                 div![
                     C!["panel-body"],
-                    style! {St::Height => "300px", St::OverflowY => "scroll"},
+                    style! {St::MaxHeight => "300px", St::OverflowY => "scroll"},
                     view_relation(model, ctx, &model.relations.outputs),
                 ]
             ]
@@ -323,7 +323,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 div![C!["panel-heading"], h3![C!["panel-title"], "Mixed IN"]],
                 div![
                     C!["panel-body"],
-                    style! {St::Height => "300px", St::OverflowY => "scroll"},
+                    style! {St::MaxHeight => "300px", St::OverflowY => "scroll"},
                     ul![
                         C!["list-group"],
                         view_relation(model, ctx, &model.relations.mixed_in)
@@ -338,7 +338,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 div![C!["panel-heading"], h3![C!["panel-title"], "Mixed OUT"]],
                 div![
                     C!["panel-body"],
-                    style! {St::Height => "300px", St::OverflowY => "scroll"},
+                    style! {St::MaxHeight => "300px", St::OverflowY => "scroll"},
                     view_relation(model, ctx, &model.relations.mixed_out),
                 ]
             ]

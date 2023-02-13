@@ -9,7 +9,7 @@ pub struct Model {
     pub id: i64,
     pub chain: i32,
     pub hash: Vec<u8>,
-    pub amount: Option<i64>,
+    pub amount: Option<u32>,
     pub from: Vec<i64>,
     pub to: Vec<i64>,
 }

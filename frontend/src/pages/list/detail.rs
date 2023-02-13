@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
-use crate::{model::StoredList, Context, LOCAL_STORAGE_KEY, Urls};
-use seed::{prelude::*, *, futures::task::LocalSpawn};
+use crate::{Context, Urls, LOCAL_STORAGE_KEY};
+use seed::{futures::task::LocalSpawn, prelude::*, *};
 use uuid::Uuid;
 
 #[derive(Default, Debug)]
 pub struct Model {
     pub slug: String,
     pub edit: bool,
-    pub list: Option<StoredList>,
+    pub list: Option<shared::StoredList>,
     pub saved: Option<bool>,
 }
 
@@ -29,13 +29,14 @@ pub fn update(
 ) {
     match msg {
         Msg::Load => {
-            let list_map: HashMap<Uuid, StoredList> = LocalStorage::get(LOCAL_STORAGE_KEY).unwrap_or_default();
+            let list_map: HashMap<Uuid, shared::StoredList> =
+                LocalStorage::get(LOCAL_STORAGE_KEY).unwrap_or_default();
             ctx.lists = list_map;
 
             match model.slug.parse::<Uuid>() {
-                    Ok(id) => model.list = ctx.lists.get(&id).cloned(),
-                    Err(_) => model.list = None,
-                };
+                Ok(id) => model.list = ctx.lists.get(&id).cloned(),
+                Err(_) => model.list = None,
+            };
             log(&model.list);
         }
         Msg::EditToggle => {
@@ -51,14 +52,22 @@ pub fn update(
                 return;
             }
 
-            if let Some(idx) = model.list.as_ref().unwrap().addresses.iter().position(|&other_id| other_id == id) {
+            if let Some(idx) = model
+                .list
+                .as_ref()
+                .unwrap()
+                .addresses
+                .iter()
+                .position(|&other_id| other_id == id)
+            {
                 model.list.as_mut().unwrap().addresses.remove(idx);
             }
 
             orders.send_msg(Msg::Save);
         }
         Msg::Save => {
-            ctx.lists.insert(model.list.as_ref().unwrap().id, model.list.clone().unwrap());        
+            ctx.lists
+                .insert(model.list.as_ref().unwrap().id, model.list.clone().unwrap());
             LocalStorage::insert(LOCAL_STORAGE_KEY, &ctx.lists);
         }
         _ => {}

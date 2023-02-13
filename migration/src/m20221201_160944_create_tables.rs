@@ -29,6 +29,7 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Chain::Title).string().not_null())
+                    .col(ColumnDef::new(Chain::Params).json().not_null())
                     .to_owned(),
             )
             .await?;
@@ -147,6 +148,17 @@ impl MigrationTrait for Migration {
                         .to_owned(),
                 )
                 .await?;
+            manager
+                .create_index(
+                    Index::create()
+                        .name("address-unique")
+                        .table(Address::Table)
+                        .col(Address::Hash)
+                        .col(Address::Chain)
+                        .unique()
+                        .to_owned(),
+                )
+                .await?;
         }
 
         manager
@@ -224,6 +236,17 @@ impl MigrationTrait for Migration {
                         .to_owned(),
                 )
                 .await?;
+            manager
+                .create_index(
+                    Index::create()
+                        .name("transaction-unique")
+                        .table(Transaction::Table)
+                        .col(Transaction::Hash)
+                        .col(Transaction::Chain)
+                        .unique()
+                        .to_owned(),
+                )
+                .await?;
         }
         Ok(())
     }
@@ -288,6 +311,7 @@ enum Chain {
     Table,
     Id,
     Title,
+    Params,
 }
 
 #[derive(Iden)]
