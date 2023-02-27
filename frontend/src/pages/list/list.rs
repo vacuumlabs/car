@@ -1,4 +1,4 @@
-use crate::{Context, Urls, pages::pagination, LOCAL_STORAGE_KEY};
+use crate::{pages::pagination, Context, Urls, LOCAL_STORAGE_KEY};
 use seed::{prelude::*, *};
 use uuid::Uuid;
 
@@ -24,13 +24,7 @@ pub enum Msg {
     StoredListDeleted(fetch::Result<i32>),
 }
 
-
-pub fn update(
-    msg: Msg,
-    model: &mut Model,
-    ctx: &mut Context,
-    orders: &mut impl Orders<Msg>,
-) {
+pub fn update(msg: Msg, model: &mut Model, ctx: &mut Context, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::Pagination(start) => {
             log(format!("Pagination: {}", start));
@@ -43,7 +37,11 @@ pub fn update(
         Msg::StoredListNew => {
             if model.new_list.is_none() {
                 log("Creating list");
-                model.new_list = Some(shared::StoredList{id: Uuid::new_v4(), description: String::new(), addresses: Vec::new()});
+                model.new_list = Some(shared::StoredList {
+                    id: Uuid::new_v4(),
+                    description: String::new(),
+                    addresses: Vec::new(),
+                });
             } else {
                 model.new_list = None;
             }
@@ -54,9 +52,14 @@ pub fn update(
             }
         }
         Msg::StoredListCreate => {
-            if model.new_list.is_none() { return; }
+            if model.new_list.is_none() {
+                return;
+            }
 
-            ctx.lists.insert(model.new_list.as_ref().unwrap().id, model.new_list.clone().unwrap());        
+            ctx.lists.insert(
+                model.new_list.as_ref().unwrap().id,
+                model.new_list.clone().unwrap(),
+            );
             LocalStorage::insert(LOCAL_STORAGE_KEY, &ctx.lists);
 
             // Reset the creation field
@@ -64,10 +67,9 @@ pub fn update(
             orders.send_msg(Msg::StoredListNew);
         }
         Msg::StoredListCreated(Ok(list)) => {
-
             log("NEW LIST CREATED");
             model.new_list = None;
-            //ctx.lists.insert(list.id.unwrap(), list);        
+            //ctx.lists.insert(list.id.unwrap(), list);
         }
 
         Msg::StoredListCreated(Err(_)) => {
@@ -93,17 +95,20 @@ pub fn update(
 }
 
 pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
-    let filtered_lists = ctx.lists.values()
-                                    .filter(
-                                        |l| 
-                                            Uuid::to_string(&l.id).to_lowercase().contains(&model.filter) || l.description.to_lowercase().contains(&model.filter));
+    let filtered_lists = ctx.lists.values().filter(|l| {
+        Uuid::to_string(&l.id)
+            .to_lowercase()
+            .contains(&model.filter)
+            || l.description.to_lowercase().contains(&model.filter)
+    });
 
-    let count =  filtered_lists.clone().count();
-    let lists: Vec<shared::StoredList> = filtered_lists.skip(model.pagination.start).take(ctx.page_size)
-                        .map(move |c| {
-                            c.clone()
-                        }).collect();    
-    
+    let count = filtered_lists.clone().count();
+    let lists: Vec<shared::StoredList> = filtered_lists
+        .skip(model.pagination.start)
+        .take(ctx.page_size)
+        .map(move |c| c.clone())
+        .collect();
+
     div![
         C!["container"],
         h2!["Stored Lists"],
@@ -121,7 +126,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
         ],
         if let Some(list) = &model.new_list {
             div![
-                C!["panel", "panel-default"],                            
+                C!["panel", "panel-default"],
                 attrs![At::Id => "list-create"],
                 div![C!["panel-heading"], h3![C!["panel-title"], "Create list"]],
                 div![C!["panel-body"],
@@ -134,13 +139,13 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                         C!["form-group"],
                         label![attrs!{At::For => "list-create-description"}, "Description"],
                         input![
-                            C!["form-control"], 
+                            C!["form-control"],
                             attrs![At::Id => "list-create-description", At::Value => list.description.clone()],
-                            input_ev(Ev::Input, |value| Msg::StoredListNewDescriptionChanged(value)),                        
+                            input_ev(Ev::Input, |value| Msg::StoredListNewDescriptionChanged(value)),
                         ],
                     ],
                     input![
-                        C!["btn", "btn-primary"], 
+                        C!["btn", "btn-primary"],
                         attrs!{At::Type => "submit", At::Value => "Create"},
                         ev(Ev::Click, |_| Msg::StoredListCreate),
                     ],
@@ -184,7 +189,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                                 ]
                             ],
                             td![
-                                C!["text-right"],                                
+                                C!["text-right"],
                                 span![
                                     C!["btn", "btn-primary"],
                                     ev(Ev::Click, move |_| Msg::StoredListDelete(id)),
@@ -193,11 +198,9 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                             ]
                         ]
                     })
-                    .collect::<Vec<Node<Msg>>>()]                    
-            ],            
+                    .collect::<Vec<Node<Msg>>>()]
+            ],
         ],
         IF!(count > 0 => pagination::<Msg>(&model.pagination, count, ctx.page_size, Msg::Pagination))
     ]
 }
-
-

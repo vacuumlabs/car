@@ -1,4 +1,4 @@
-use crate::{Context, Urls, pages::pagination};
+use crate::{pages::pagination, Context, Urls};
 use seed::{prelude::*, *};
 
 #[derive(Default, Debug)]
@@ -22,13 +22,7 @@ pub enum Msg {
     ChainDeleted(fetch::Result<i32>),
 }
 
-
-pub fn update(
-    msg: Msg,
-    model: &mut Model,
-    ctx: &mut Context,
-    orders: &mut impl Orders<Msg>,
-) {
+pub fn update(msg: Msg, model: &mut Model, ctx: &mut Context, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::Pagination(start) => {
             log(format!("Pagination: {}", start));
@@ -39,8 +33,10 @@ pub fn update(
         }
         Msg::ChainNew => {
             if model.new_chain.is_none() {
-                model.new_chain = Some(shared::Chain{title: String::new(), ..Default::default()});
-
+                model.new_chain = Some(shared::Chain {
+                    title: String::new(),
+                    ..Default::default()
+                });
             } else {
                 model.new_chain = None;
             }
@@ -54,15 +50,12 @@ pub fn update(
             if let Some(chain) = &model.new_chain {
                 let chain = chain.clone();
                 let token = ctx.token.clone();
-                orders.perform_cmd(
-                    async move {
-                        Msg::ChainCreated(crate::request::chain::create(chain.clone(), token).await)
-                    }
-                );
+                orders.perform_cmd(async move {
+                    Msg::ChainCreated(crate::request::chain::create(chain.clone(), token).await)
+                });
             }
         }
         Msg::ChainCreated(Ok(chain)) => {
-
             log("NEW CHAIN CREATED");
             model.new_chain = None;
             ctx.chains.insert(chain.id.unwrap().clone(), chain);
@@ -73,11 +66,9 @@ pub fn update(
         }
 
         Msg::ChainDelete(id) => {
-            orders.perform_cmd(
-                async move {
-                    Msg::ChainDeleted(crate::request::chain::delete(id.clone()).await)
-                }
-            );
+            orders.perform_cmd(async move {
+                Msg::ChainDeleted(crate::request::chain::delete(id.clone()).await)
+            });
         }
 
         Msg::ChainDeleted(Ok(id)) => {
@@ -95,21 +86,29 @@ pub fn update(
 
 pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
     let filtered_chains = ctx
-                                    .chains
-                                    .values()
-                                    .into_iter()
-                                    .filter(|s| s.title.to_lowercase().contains(&model.filter))
-                                    .map(|s| s.clone())
-                                    .collect::<Vec<shared::Chain>>();
+        .chains
+        .values()
+        .into_iter()
+        .filter(|s| s.title.to_lowercase().contains(&model.filter))
+        .map(|s| s.clone())
+        .collect::<Vec<shared::Chain>>();
 
     let size = filtered_chains.len();
-    let start = if model.pagination.start > size { size } else { model.pagination.start };
-    let end = if model.pagination.start + ctx.page_size > size { size } else { model.pagination.start + ctx.page_size};
+    let start = if model.pagination.start > size {
+        size
+    } else {
+        model.pagination.start
+    };
+    let end = if model.pagination.start + ctx.page_size > size {
+        size
+    } else {
+        model.pagination.start + ctx.page_size
+    };
 
-    let mut chains: Vec<shared::Chain> = filtered_chains
-                        [start..end]
-                        .iter()
-                        .map(|c| c.clone()).collect();
+    let mut chains: Vec<shared::Chain> = filtered_chains[start..end]
+        .iter()
+        .map(|c| c.clone())
+        .collect();
 
     // sort pagination
     chains.sort_by_key(|ch| ch.id);
@@ -131,11 +130,11 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
         ]),
         if let Some(chain) = &model.new_chain {
             div![
-                C!["panel", "panel-default"],                            
+                C!["panel", "panel-default"],
                 attrs![At::Id => "service-create"],
                 div![C!["panel-heading"], h3![C!["panel-title"], "Create chain"]],
                 div![C!["panel-body"],
-                    div![         
+                    div![
                         attrs![At::Id => "chain-create"],
                         div![
                             C!["form-group"],
@@ -146,13 +145,13 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                             C!["form-group"],
                             label![attrs!{At::For => "chain-create-title"}, "Title"],
                             input![
-                                C!["form-control"], 
+                                C!["form-control"],
                                 attrs![At::Id => "chain-create-title", At::Value => chain.title.clone()],
-                                input_ev(Ev::Input, |value| Msg::ChainNewTitleChanged(value)),                        
+                                input_ev(Ev::Input, |value| Msg::ChainNewTitleChanged(value)),
                             ],
                         ],
                         input![
-                            C!["btn", "btn-primary"], 
+                            C!["btn", "btn-primary"],
                             attrs!{At::Type => "submit", At::Value => "Create"},
                             ev(Ev::Click, |_| Msg::ChainCreate),
                         ],

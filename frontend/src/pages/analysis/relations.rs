@@ -1,9 +1,6 @@
-use crate::{
-    pages::pagination,
-    Context, Pagination, Urls,
-};
-use     shared::{AddressRef, AddressRelation};
+use crate::{pages::pagination, Context, Pagination, Urls};
 use seed::{prelude::*, *};
+use shared::{AddressRef, AddressRelation};
 use std::collections::HashMap;
 use std::iter::FromIterator;
 
@@ -194,7 +191,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                     label![attrs! {At::For => "relations-hex"}, "HEX"],
                     p![
                         attrs! {At::Id => "relations-hex"},
-                        a![                            
+                        a![
                             model.relations.hex.clone(),
                             attrs!{At::Href => crate::Urls::new(ctx.base_url.clone()).address().list_by_address(model.relations.hex.clone())}
                         ]
