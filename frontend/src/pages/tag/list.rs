@@ -24,7 +24,6 @@ pub enum Msg {
 
 pub fn update(msg: Msg, model: &mut Model, ctx: &mut Context, orders: &mut impl Orders<Msg>) {
     match msg {
-
         Msg::Pagination(start) => {
             log(format!("Pagination: {}", start));
             model.pagination.start = start;
@@ -133,7 +132,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                 attrs![At::Id => "service-create"],
                 div![C!["panel-heading"], h3![C!["panel-title"], "Create TAG"]],
                 div![C!["panel-body"],
-                    div![                
+                    div![
                         attrs![At::Id => "tag-create"],
                         div![
                             C!["form-group"],

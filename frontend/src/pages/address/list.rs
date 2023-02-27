@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use crate::{Context, Urls, LOCAL_STORAGE_KEY};
-use seed::{prelude::{*}, *};
-use uuid::Uuid;
+use seed::{prelude::*, *};
 use shared::{Address, StoredList};
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub enum PageType {
@@ -21,7 +21,7 @@ pub struct Model {
     pub new_address: Option<Address>,
     pub modal_address: Option<Address>,
     pub show_modal: bool,
-    pub selected_list_id: Option<Uuid>
+    pub selected_list_id: Option<Uuid>,
 }
 
 #[derive(Debug)]
@@ -61,7 +61,8 @@ pub fn update(msg: Msg, model: &mut Model, ctx: &mut Context, orders: &mut impl 
             });
         }
         Msg::AddressFetched(Ok(addresses)) => {
-            let list_map: HashMap<Uuid, StoredList> = LocalStorage::get(LOCAL_STORAGE_KEY).unwrap_or_default();
+            let list_map: HashMap<Uuid, StoredList> =
+                LocalStorage::get(LOCAL_STORAGE_KEY).unwrap_or_default();
             ctx.lists = list_map;
 
             model.addresses = addresses;
@@ -136,22 +137,31 @@ pub fn update(msg: Msg, model: &mut Model, ctx: &mut Context, orders: &mut impl 
         Msg::SelectValueChanged(event) => {
             model.selected_list_id = match event.parse::<Uuid>() {
                 Ok(uuid) => Some(uuid),
-                Err(_) => None
+                Err(_) => None,
             };
         }
-
 
         Msg::SaveToList() => {
             if model.selected_list_id.is_none() || model.modal_address.is_none() {
                 log("Tried to call save with None!");
             }
 
-            if ctx.lists.get(&model.selected_list_id.unwrap()).unwrap().addresses.contains(&model.modal_address.clone().unwrap().id.unwrap()) {
+            if ctx
+                .lists
+                .get(&model.selected_list_id.unwrap())
+                .unwrap()
+                .addresses
+                .contains(&model.modal_address.clone().unwrap().id.unwrap())
+            {
                 orders.send_msg(Msg::CloseModal());
                 return;
             }
-            ctx.lists.get_mut(&model.selected_list_id.unwrap()).unwrap().addresses.push(model.modal_address.clone().unwrap().id.unwrap());
-            
+            ctx.lists
+                .get_mut(&model.selected_list_id.unwrap())
+                .unwrap()
+                .addresses
+                .push(model.modal_address.clone().unwrap().id.unwrap());
+
             LocalStorage::insert(LOCAL_STORAGE_KEY, &ctx.lists);
             orders.send_msg(Msg::CloseModal());
         }
@@ -159,7 +169,6 @@ pub fn update(msg: Msg, model: &mut Model, ctx: &mut Context, orders: &mut impl 
         _ => {
             log(msg);
         }
-
     }
 }
 
@@ -219,13 +228,12 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                             ],
                             ctx.lists
                                 .values()
-                                .map(|list| 
+                                .map(|list|
                                      option![
                                      attrs!(
                                          At::Value => list.id.to_string(),
                                          ),
                                      list.id.to_string()
-                                     
                                 ])
                         ]
                     ],

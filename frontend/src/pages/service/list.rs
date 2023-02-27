@@ -1,4 +1,4 @@
-use crate::{Context, Urls, pages::pagination};
+use crate::{pages::pagination, Context, Urls};
 use seed::{prelude::*, *};
 
 #[derive(Default, Debug)]
@@ -20,13 +20,7 @@ pub enum Msg {
     ServiceDeleted(fetch::Result<i32>),
 }
 
-
-pub fn update(
-    msg: Msg,
-    model: &mut Model,
-    ctx: &mut Context,
-    orders: &mut impl Orders<Msg>,
-) {
+pub fn update(msg: Msg, model: &mut Model, ctx: &mut Context, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::Pagination(start) => {
             log(format!("Pagination: {}", start));
@@ -38,8 +32,10 @@ pub fn update(
         }
         Msg::ServiceNew => {
             if model.new_service.is_none() {
-                model.new_service = Some(shared::Service{title: String::new(), id: None});
-
+                model.new_service = Some(shared::Service {
+                    title: String::new(),
+                    id: None,
+                });
             } else {
                 model.new_service = None;
             }
@@ -52,18 +48,15 @@ pub fn update(
         Msg::ServiceCreate => {
             if let Some(service) = &model.new_service {
                 let service = service.clone();
-                orders.perform_cmd(
-                    async move {
-                        Msg::ServiceCreated(crate::request::service::create(service.clone()).await)
-                    }
-                );
+                orders.perform_cmd(async move {
+                    Msg::ServiceCreated(crate::request::service::create(service.clone()).await)
+                });
             }
         }
         Msg::ServiceCreated(Ok(service)) => {
-
             log("NEW CHAIN CREATED");
             model.new_service = None;
-            ctx.services.insert(service.id.unwrap(), service);        
+            ctx.services.insert(service.id.unwrap(), service);
         }
 
         Msg::ServiceCreated(Err(_)) => {
@@ -71,11 +64,9 @@ pub fn update(
         }
 
         Msg::ServiceDelete(id) => {
-            orders.perform_cmd(
-                async move {
-                    Msg::ServiceDeleted(crate::request::service::delete(id.clone()).await)
-                }
-            );
+            orders.perform_cmd(async move {
+                Msg::ServiceDeleted(crate::request::service::delete(id.clone()).await)
+            });
         }
 
         Msg::ServiceDeleted(Ok(id)) => {
@@ -92,19 +83,19 @@ pub fn update(
 }
 
 pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
-      
-
     let filtered_services = ctx
-                                    .services
-                                    .values()
-                                    .filter(|s| s.title.to_lowercase().contains(&model.filter));
-                                    
+        .services
+        .values()
+        .filter(|s| s.title.to_lowercase().contains(&model.filter));
 
     let size = filtered_services.clone().count();
 
-    let services: Vec<shared::Service> = filtered_services.skip(model.pagination.start).take(ctx.page_size)
-                        .map(|c| c.clone()).collect();
-    
+    let services: Vec<shared::Service> = filtered_services
+        .skip(model.pagination.start)
+        .take(ctx.page_size)
+        .map(|c| c.clone())
+        .collect();
+
     div![
         C!["container"],
         h2!["Services"],
@@ -138,7 +129,7 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                         input![
                             C!["form-control"], 
                             attrs![At::Id => "service-create-title", At::Value => service.title.clone()],
-                            input_ev(Ev::Input, |value| Msg::ServiceNewTitleChanged(value)),                        
+                            input_ev(Ev::Input, |value| Msg::ServiceNewTitleChanged(value)),
                         ],
                     ],
                     input![
@@ -185,10 +176,10 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                                     attrs!{At::Href => Urls::new(ctx.base_url.clone()).address().list_by_service(id.clone())}
                                 ]
                             ],
-                            
+
                             td![
-                                C!["text-right"],                                
-                                IF!(ctx.edit => 
+                                C!["text-right"],
+                                IF!(ctx.edit =>
                                 div![
                                     C!["btn", "btn-primary"],
                                     ev(Ev::Click, move |_| Msg::ServiceDelete(id)),
@@ -197,11 +188,9 @@ pub fn view(model: &Model, ctx: &Context) -> Node<Msg> {
                             ]
                         ]
                     })
-                    .collect::<Vec<Node<Msg>>>()]                    
-            ],            
+                    .collect::<Vec<Node<Msg>>>()]
+            ],
         ],
         IF!(size > 0 => pagination::<Msg>(&model.pagination, size, ctx.page_size.clone(), Msg::Pagination))
     ]
 }
-
-

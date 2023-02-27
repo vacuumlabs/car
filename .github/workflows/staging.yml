@@ -1,0 +1,54 @@
+name: Staging master
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+            profile: minimal
+            toolchain: 1.66.1
+            override: true
+            components: rustfmt, clippy
+
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/            
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Lint
+        run: |
+          cargo fmt --all -- --check
+          cargo test --all
+
+      - name: Install dependencies
+        run: |
+          cargo install --locked trunk || true
+
+      - name: Build
+        run: |
+          cargo build --release
+          cargo build --release -p migration
+          trunk build --release
+      
+
+    
