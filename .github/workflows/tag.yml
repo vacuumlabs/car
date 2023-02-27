@@ -1,8 +1,9 @@
-name: Staging master
+name: Release tag
 on:
   push:
-    branches:
-      - main
+    tags:
+    - "*"
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -56,8 +57,8 @@ jobs:
 
       - name: Deploy files
         run: |
-          rsync -ave ssh ./dist/ root@vacuumlabs.siteapp.cz:/var/www/staging.car/ --delete
-          scp ./target/release/car ./target/release/migration root@vacuumlabs.siteapp.cz:/opt/staging.car/
-          ssh root@vacuumlabs.siteapp.cz systemctl restart staging.car
+          rsync -ave ssh ./dist/ root@vacuumlabs.siteapp.cz:/var/www/car/ --delete
+          scp ./target/release/car ./target/release/migration root@vacuumlabs.siteapp.cz:/opt/car/
+          ssh root@vacuumlabs.siteapp.cz systemctl restart car
 
 
