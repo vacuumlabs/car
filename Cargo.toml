@@ -45,3 +45,4 @@ tracing-subscriber = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 reqwest = { version = "0.11", features = ["json"] }
+oura = "1.7"

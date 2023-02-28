@@ -10,6 +10,7 @@ use std::{
 use tokio::sync::mpsc::Receiver;
 
 mod anyscan;
+mod cardano;
 
 #[derive(Clone, Debug)]
 pub enum FeedCommand {
@@ -78,15 +79,22 @@ pub trait Feed {
             return;
         }
 
-        tracing::info!("Adding address to DB");
+        tracing::info!(
+            "Adding address to DB, {:?}",
+            address_list
+                .iter()
+                .map(|a| hex::encode(&a))
+                .collect::<Vec<String>>()
+        );
+
         let statement = Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
-            WITH new_addresses as (SELECT unnest($2) as hash)
+            WITH new_addresses as (SELECT DISTINCT unnest($2) as hash)
 
             INSERT INTO
-                 address (chain, hash)
-                 SELECT
+                address (chain, hash)
+                SELECT
                     $1, T.hash
                 FROM
                     new_addresses T

@@ -23,7 +23,7 @@ type FeedChannel = Arc<RwLock<HashMap<i32, tokio::sync::mpsc::Sender<feed::FeedC
 
 #[tokio::main]
 async fn main() -> Result<(), String> {
-    let fmt_layer = tracing_subscriber::fmt::layer();
+    let fmt_layer = tracing_subscriber::fmt::layer().with_line_number(true);
     let filter = tracing_subscriber::filter::Targets::new()
         .with_target("sqlx", tracing::Level::DEBUG)
         .with_target("rweb", tracing::Level::DEBUG)
@@ -166,6 +166,12 @@ pub async fn start_feeder(
             feed_channel.insert(chain.id.clone(), sender);
             tokio::task::spawn(async move {
                 anyscan.run(db, receiver, chain.id).await;
+            });
+        }
+        shared::ChainParam::Cardano(mut cardano) => {
+            feed_channel.insert(chain.id.clone(), sender);
+            tokio::task::spawn(async move {
+                cardano.run(db, receiver, chain.id).await;
             });
         }
         shared::ChainParam::None => {}

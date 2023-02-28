@@ -62,6 +62,7 @@ pub enum ChainParam {
     EtherScan(AnyScan),
     PolyScan(AnyScan),
     ArbiScan(AnyScan),
+    Cardano(Cardano),
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
@@ -71,6 +72,14 @@ pub struct AnyScan {
     pub token: String,
     pub last: u64,
     pub delay: u64,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "schema", derive(Schema))]
+pub struct Cardano {
+    pub address: String,
+    pub block_hash: String,
+    pub slot: u64,
 }
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone)]
