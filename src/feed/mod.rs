@@ -48,7 +48,7 @@ pub trait Feed {
                         }
                     } else {
                         self.fail().await;
-                        //self.process_block(&db, &mut chain).await;
+                        self.process_block(&db, &mut chain).await;
                     }
                 }
             }
@@ -83,7 +83,7 @@ pub trait Feed {
             DbBackend::Postgres,
             r#"
             WITH new_addresses as (SELECT unnest($2) as hash)
-            
+
             INSERT INTO
                  address (chain, hash)
                  SELECT
@@ -92,7 +92,7 @@ pub trait Feed {
                     new_addresses T
                     LEFT JOIN address A
                         ON A.hash = T.hash AND A.chain = $1
-                WHERE 
+                WHERE
                     A.id IS NULL
             "#,
             vec![chain_id.into(), address_list.clone().into()],
@@ -114,15 +114,15 @@ pub trait Feed {
             DbBackend::Postgres,
             r#"
             WITH addresses as (SELECT unnest($2) as hash)
-            
+
             SELECT
                 A2.id, A2.hash
-                
+
             FROM
                 addresses A1
                 LEFT JOIN address A2
                     ON A1.hash = A2.hash AND A2.chain = $1
-            WHERE 
+            WHERE
                     A2.id IS NOT NULL
             "#,
             vec![chain_id.into(), addresses.clone().into()],

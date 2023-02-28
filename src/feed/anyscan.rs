@@ -55,7 +55,7 @@ async fn action(
     action: &str,
 ) {
     let mut block = 0;
-    let mut start = tokio::time::Instant::now();
+    let mut start: tokio::time::Instant;
 
     loop {
         let url = format!(
