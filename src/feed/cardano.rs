@@ -214,7 +214,7 @@ impl super::Feed for shared::Cardano {
                             let transaction_to_insert = transactions
                                 .iter()
                                 .filter(|t| {
-                                    existing_transaction.contains(&hex::decode(&t.hash).unwrap())
+                                    !existing_transaction.contains(&hex::decode(&t.hash).unwrap())
                                 })
                                 .map(|t| crate::entity::transaction::ActiveModel {
                                     chain: Set(chain_id.clone()),
